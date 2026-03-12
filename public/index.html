@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boarders</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --primary: #FF6B6B; --secondary: #4ECDC4; --accent: #FFE66D; --text: #2F3542; --c4blue: #1E90FF; }
+        body { font-family: 'Nunito', sans-serif; text-align: center; margin: 0; padding-top: 30px; background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; overflow-x: hidden; }
+        h1 { font-size: 3rem; color: white; text-shadow: 3px 5px 0px rgba(0,0,0,0.1); margin-bottom: 10px; animation: float 3s ease-in-out infinite; }
+        .card { background: white; padding: 30px; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); width: 350px; }
+        input { width: 85%; padding: 15px; margin: 10px 0; font-size: 16px; border-radius: 15px; border: 2px solid #eee; font-family: 'Nunito'; }
+        button { padding: 12px 25px; font-size: 1.2rem; font-weight: 800; cursor: pointer; border-radius: 20px; border: none; background: var(--primary); color: white; margin: 10px 5px; transition: all 0.2s; box-shadow: 0 6px 15px rgba(255,107,107,0.4); }
+        button:hover { transform: translateY(-4px) scale(1.05); }
+        
+        #game-section, #play-section { display: none; } 
+        
+        /* THE WHEEL */
+        #wheel-container { margin: 20px auto; display: none; }
+        #wheel { width: 240px; height: 80px; line-height: 80px; margin: 0 auto; background: linear-gradient(135deg, #FCA311 0%, var(--accent) 100%); color: white; font-weight: 900; font-size: 1.5rem; border-radius: 40px; border: 5px solid white; box-shadow: 0 10px 25px rgba(252, 163, 17, 0.5); transition: transform 3s cubic-bezier(0.25, 1, 0.5, 1); }
+        .spinning { transform: rotate(1440deg) scale(1.2); }
+        .fade-out { animation: fadeOut 0.5s ease forwards; pointer-events: none; }
+        .fade-in { animation: fadeIn 0.5s ease forwards; }
+        @keyframes fadeOut { to { opacity: 0; transform: scale(0.9); } }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(1.1); } to { opacity: 1; transform: scale(1); } }
+
+        /* HEADER TEXT IN GAME */
+        .game-header { display: flex; justify-content: space-between; align-items: center; width: 600px; margin: 0 auto 10px auto; }
+        #vs-display { font-size: 1.5rem; font-weight: 900; color: white; text-shadow: 2px 2px 0px rgba(0,0,0,0.1); }
+        #quitBtn { background: #dc3545; font-size: 1rem; padding: 8px 15px; margin: 0; }
+        #player-role-display { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; color: var(--text); }
+        #turn-display { font-size: 1.5rem; font-weight: 900; margin-bottom: 15px; color: var(--secondary); background: white; padding: 10px 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: inline-block; }
+        
+        /* STTT BOARD */
+        #sttt-container { display: none; }
+        #sttt-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; background: var(--text); padding: 8px; border-radius: 15px; width: max-content; margin: 0 auto; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
+        .macro-cell { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 3px; background: white; padding: 5px; border-radius: 8px; width: 140px; height: 140px; transition: all 0.3s; }
+        .macro-cell.disabled { opacity: 0.6; pointer-events: none; }
+        .macro-cell.highlight { box-shadow: 0 0 15px 5px var(--accent); transform: scale(1.03); z-index: 10; position: relative; }
+        .micro-cell { line-height: 1; background: #f1f2f6; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 900; cursor: pointer; border-radius: 4px; width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; }
+        .mark-x { color: var(--primary); animation: popMark 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .mark-o { color: var(--secondary); animation: popMark 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes popMark { 0% { transform: scale(0.3); opacity: 0; } 70% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
+        .macro-winner { grid-column: span 3; grid-row: span 3; display: flex; align-items: center; justify-content: center; font-size: 5rem; font-weight: 900; height: 100%; animation: popMark 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .winner-x { color: var(--primary); } .winner-o { color: var(--secondary); }
+
+        /* CONNECT 4 UI */
+        #c4-container { display: none; }
+        #c4-board { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; background: var(--c4blue); padding: 15px; border-radius: 20px; width: max-content; margin: 0 auto; box-shadow: 0 15px 35px rgba(0,0,0,0.3); border: 4px solid #0056b3; }
+        .c4-cell { width: 60px; height: 60px; background: #c2e9fb; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: inset 0 5px 10px rgba(0,0,0,0.2); transition: background 0.3s; }
+        .c4-cell:hover { opacity: 0.8; }
+        .c4-red { background: var(--primary); box-shadow: inset 0 -5px 10px rgba(0,0,0,0.2), 0 5px 10px rgba(0,0,0,0.3); animation: dropIn 0.4s ease forwards; }
+        .c4-yellow { background: var(--accent); box-shadow: inset 0 -5px 10px rgba(0,0,0,0.2), 0 5px 10px rgba(0,0,0,0.3); animation: dropIn 0.4s ease forwards; }
+        @keyframes dropIn { 0% { transform: translateY(-200px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+
+        /* PONG UI */
+        #pong-container { display: none; position:relative; width: 750px; height: 450px; background: #2F3542; border-radius: 15px; margin: 0 auto; overflow: hidden; border: 5px solid white; box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
+        #pong-line { position:absolute; left:50%; top:0; bottom:0; width:4px; margin-left:-2px; background: rgba(255,255,255,0.2); }
+        #pong-paddle1 { position:absolute; left: 5%; width: 12px; height: 90px; background: var(--primary); transform: translate(-50%, -50%); border-radius:5px; }
+        #pong-paddle2 { position:absolute; left: 95%; width: 12px; height: 90px; background: var(--secondary); transform: translate(-50%, -50%); border-radius:5px; }
+        #pong-ball { position:absolute; width: 20px; height: 20px; background: var(--accent); transform: translate(-50%, -50%); border-radius:50%; }
+        .strike-text { position:absolute; top: 15px; font-size: 1.8rem; font-weight:900; }
+        #pong-countdown { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); font-size:5rem; font-weight:900; color:white; text-shadow:2px 2px 10px rgba(0,0,0,0.5); z-index: 10; display: none; }
+
+        /* MODALS & FLOATING COUNTER */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 40px; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); width: 400px; text-align: center; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .leaderboard-list { text-align: left; margin: 20px 0; font-size: 1.2rem; font-weight: bold; color: var(--text); }
+        .leaderboard-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 2px solid #eee; }
+        #go-title { font-size: 3rem; margin: 0; font-weight: 900; }
+        #go-points { font-size: 1.5rem; margin: 10px 0 30px 0; font-weight: bold; }
+        .win-text { color: var(--secondary); }
+        .lose-text { color: var(--primary); }
+
+        #online-counter { position: fixed; bottom: 20px; right: 20px; background: rgba(255,255,255,0.9); padding: 10px 20px; border-radius: 30px; font-weight: 800; color: var(--text); box-shadow: 0 5px 15px rgba(0,0,0,0.1); font-size: 1.1rem; z-index: 50; }
+    </style>
+</head>
+<body>
+
+    <h1>Boarders</h1>
+
+    <div id="auth-section" class="card">
+        <h2>Join the Game</h2>
+        <input type="text" id="usernameInput" placeholder="Username" autocomplete="off"><br>
+        <input type="password" id="passwordInput" placeholder="Password"><br>
+        <button id="loginBtn">Login</button> <button id="registerBtn">Register</button>
+        <div id="auth-error" style="color:var(--primary); font-weight:bold; margin-top:10px;"></div>
+    </div>
+
+    <div id="game-section" class="card">
+        <h2>Hi, <span id="playerNameDisplay">Player</span>! 👋</h2>
+        <p style="font-size:1.2rem; font-weight:bold;">Rank Points: <span id="playerRankDisplay" style="color:var(--primary);">100</span> ⭐</p>
+        <button id="findMatchBtn">🔍 Search for Game</button>
+        <button id="viewLeaderboardBtn" style="background: var(--secondary);">🏆 Leaderboard</button>
+        <br>
+        <button id="logoutBtn" style="background: #ced6e0; color: var(--text); box-shadow: none;">Logout</button>
+        <div id="status" style="margin-top: 15px; font-weight: bold; color: #57606f;">Ready to play?</div>
+        <div id="wheel-container"><div id="wheel">???</div></div>
+    </div>
+
+    <div id="play-section">
+        <div class="game-header">
+            <div id="vs-display">You vs Opponent</div>
+            <button id="quitBtn">Quit Game</button>
+        </div>
+        
+        <div id="player-role-display"></div>
+        <div id="turn-display">Waiting for match...</div>
+        
+        <div id="sttt-container"><div id="sttt-board"></div></div>
+        <div id="c4-container"><div id="c4-board"></div></div>
+
+        <div id="pong-container">
+            <div class="strike-text" style="left: 20%; color:var(--primary);">Strikes: <span id="pong-strike1">0</span>/3 ❌</div>
+            <div class="strike-text" style="right: 20%; color:var(--secondary);">Strikes: <span id="pong-strike2">0</span>/3 ❌</div>
+            <div id="pong-line"></div>
+            <div id="pong-countdown">3</div>
+            <div id="pong-paddle1"></div>
+            <div id="pong-paddle2"></div>
+            <div id="pong-ball"></div>
+        </div>
+    </div>
+
+    <div id="leaderboard-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 style="font-size:2rem; margin-top:0;">Top 10 Boarders 🏆</h2>
+            <div id="leaderboard-content" class="leaderboard-list">Loading...</div>
+            <button id="closeLeaderboardBtn" style="width:100%;">Close</button>
+        </div>
+    </div>
+
+    <div id="game-over-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 id="go-title">Game Over</h2>
+            <p id="go-message" style="font-size:1.2rem; margin:0;"></p>
+            <p id="go-points"></p>
+            <button id="returnLobbyBtn" style="width:100%;">Return to Lobby</button>
+        </div>
+    </div>
+
+    <div id="online-counter">🟢 Players Online: 0</div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        
+        const authSection = document.getElementById('auth-section');
+        const gameSection = document.getElementById('game-section');
+        const playSection = document.getElementById('play-section');
+        const usernameInput = document.getElementById('usernameInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const authError = document.getElementById('auth-error');
+        const playerNameDisplay = document.getElementById('playerNameDisplay');
+        const playerRankDisplay = document.getElementById('playerRankDisplay');
+        const findMatchBtn = document.getElementById('findMatchBtn');
+        const statusDiv = document.getElementById('status');
+        const wheelContainer = document.getElementById('wheel-container');
+        const wheel = document.getElementById('wheel');
+        
+        const vsDisplay = document.getElementById('vs-display');
+        const roleDisplay = document.getElementById('player-role-display');
+        const turnDisplay = document.getElementById('turn-display');
+        const stttContainer = document.getElementById('sttt-container');
+        const stttBoard = document.getElementById('sttt-board');
+        const c4Container = document.getElementById('c4-container');
+        const c4Board = document.getElementById('c4-board');
+        const pongContainer = document.getElementById('pong-container');
+
+        let currentRoom = null, mySymbol = null, currentGameType = null, myUsername = null;
+
+        // NEW: Update the floating counter!
+        socket.on('onlineCount', (count) => {
+            document.getElementById('online-counter').innerText = `🟢 Players Online: ${count}`;
+        });
+
+        // AUTH
+        window.onload = () => {
+            const savedUser = localStorage.getItem('boarders_account');
+            if (savedUser) { const { username, password } = JSON.parse(savedUser); usernameInput.value = username; passwordInput.value = password; handleAuth('login'); }
+        };
+
+        async function handleAuth(action) {
+            const username = usernameInput.value, password = passwordInput.value;
+            if (!username || !password) return authError.innerText = "Enter username and password.";
+            const res = await fetch(`/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+            const data = await res.json();
+            if (res.ok) {
+                localStorage.setItem('boarders_account', JSON.stringify({ username, password }));
+                myUsername = data.user.username;
+                authSection.style.display = 'none'; gameSection.style.display = 'block';
+                playerNameDisplay.innerText = data.user.username; playerRankDisplay.innerText = data.user.rank;
+            } else { localStorage.removeItem('boarders_account'); authError.innerText = data.error; }
+        }
+        document.getElementById('registerBtn').addEventListener('click', () => handleAuth('register'));
+        document.getElementById('loginBtn').addEventListener('click', () => handleAuth('login'));
+        document.getElementById('logoutBtn').addEventListener('click', () => { localStorage.removeItem('boarders_account'); location.reload(); });
+
+        document.getElementById('viewLeaderboardBtn').addEventListener('click', async () => {
+            document.getElementById('leaderboard-modal').style.display = 'flex';
+            const res = await fetch('/leaderboard');
+            const data = await res.json();
+            document.getElementById('leaderboard-content').innerHTML = data.map((u, i) => `<div class="leaderboard-item"><span>#${i+1} ${u.username}</span><span style="color:var(--primary);">${u.rank} ⭐</span></div>`).join('');
+        });
+        document.getElementById('closeLeaderboardBtn').addEventListener('click', () => { document.getElementById('leaderboard-modal').style.display = 'none'; });
+
+        // MATCHMAKING
+        findMatchBtn.addEventListener('click', () => {
+            socket.emit('joinQueue', myUsername);
+            statusDiv.innerText = 'Searching for a match... ⏳';
+            findMatchBtn.disabled = true;
+        });
+
+        document.getElementById('quitBtn').addEventListener('click', () => { socket.emit('quitGame'); });
+
+        socket.on('matchFound', (data) => {
+            statusDiv.innerText = `Match found! 🎯`;
+            wheelContainer.style.display = 'block';
+            setTimeout(() => wheel.classList.add('spinning'), 50);
+            setTimeout(() => { wheel.classList.remove('spinning'); wheel.innerText = data.game; statusDiv.innerText = `${data.game} Selected! Get ready... 🚀`; }, 3000);
+        });
+
+        // GENERATE BOARDS ONCE
+        for (let i = 0; i < 9; i++) {
+            const macroCell = document.createElement('div'); macroCell.className = 'macro-cell'; macroCell.id = `macro-${i}`;
+            for (let j = 0; j < 9; j++) {
+                const microCell = document.createElement('div'); microCell.className = 'micro-cell'; microCell.id = `micro-${i}-${j}`;
+                microCell.onclick = () => { if (currentGameType === 'Super Tic-Tac-Toe') socket.emit('makeMove', { roomName: currentRoom, macroIndex: i, microIndex: j }); };
+                macroCell.appendChild(microCell);
+            }
+            stttBoard.appendChild(macroCell);
+        }
+        for (let r = 0; r < 6; r++) {
+            for (let c = 0; c < 7; c++) {
+                const cell = document.createElement('div'); cell.className = 'c4-cell'; cell.id = `c4-${r}-${c}`;
+                cell.onclick = () => { if (currentGameType === 'Connect 4') socket.emit('makeC4Move', { roomName: currentRoom, col: c }); };
+                c4Board.appendChild(cell);
+            }
+        }
+
+        // START GAME
+        socket.on('startGame', (gameState) => {
+            currentRoom = gameState.roomName;
+            currentGameType = gameState.gameType;
+            mySymbol = gameState.players[socket.id];
+            
+            vsDisplay.innerText = `${myUsername} vs ${gameState.opponentNames[socket.id]}`;
+            
+            // NEW: Set the specific role text!
+            if (currentGameType === 'Connect 4') {
+                roleDisplay.innerHTML = `You are playing as: <strong>${mySymbol === 'Red' ? '🔴 Red' : '🟡 Yellow'}</strong>`;
+            } else if (currentGameType === 'Super Tic-Tac-Toe') {
+                const color = mySymbol === 'X' ? 'var(--primary)' : 'var(--secondary)';
+                roleDisplay.innerHTML = `You are playing as: <strong style="color: ${color};">${mySymbol}</strong>`;
+            } else if (currentGameType === 'Pong') {
+                roleDisplay.innerHTML = `You are the <strong>${mySymbol}</strong> paddle`;
+            }
+            
+            gameSection.classList.add('fade-out');
+            setTimeout(() => {
+                gameSection.style.display = 'none'; gameSection.classList.remove('fade-out');
+                playSection.style.display = 'block'; playSection.classList.add('fade-in');
+                
+                stttContainer.style.display = 'none';
+                c4Container.style.display = 'none';
+                pongContainer.style.display = 'none';
+
+                if (currentGameType === 'Super Tic-Tac-Toe') {
+                    stttContainer.style.display = 'block';
+                    updateSTTTUI(gameState);
+                } else if (currentGameType === 'Connect 4') {
+                    c4Container.style.display = 'block';
+                    updateC4UI(gameState);
+                } else if (currentGameType === 'Pong') {
+                    pongContainer.style.display = 'block';
+                    turnDisplay.innerText = "Hold UP/DOWN arrows (or W/S) to glide!";
+                }
+            }, 500);
+        });
+
+        // STTT UI
+        socket.on('updateBoard', updateSTTTUI);
+        function updateSTTTUI(game) {
+            turnDisplay.innerText = game.turn === mySymbol ? "🎯 Your Turn!" : "⏳ Opponent's Turn...";
+            turnDisplay.style.color = game.turn === mySymbol ? "var(--primary)" : "var(--secondary)";
+            for (let i = 0; i < 9; i++) {
+                const macroDiv = document.getElementById(`macro-${i}`);
+                if (game.macroBoard[i]) {
+                    const winnerClass = game.macroBoard[i] === 'X' ? 'winner-x' : 'winner-o';
+                    if (!macroDiv.innerHTML.includes('macro-winner')) {
+                        macroDiv.innerHTML = `<div class="macro-winner ${winnerClass}">${game.macroBoard[i] === 'Tie' ? '-' : game.macroBoard[i]}</div>`;
+                        macroDiv.className = 'macro-cell disabled';
+                    }
+                    continue;
+                }
+                macroDiv.className = (!game.winner && game.turn === mySymbol && (game.nextBoard === -1 || game.nextBoard === i)) ? 'macro-cell highlight' : 'macro-cell disabled';
+                for (let j = 0; j < 9; j++) {
+                    const microDiv = document.getElementById(`micro-${i}-${j}`);
+                    if (microDiv) {
+                        const cellValue = game.board[i][j];
+                        if (cellValue && microDiv.innerHTML === '') microDiv.innerHTML = `<span class="${cellValue === 'X' ? 'mark-x' : 'mark-o'}">${cellValue}</span>`;
+                    }
+                }
+            }
+        }
+
+        // CONNECT 4 UI
+        socket.on('updateC4Board', updateC4UI);
+        function updateC4UI(game) {
+            turnDisplay.innerText = game.turn === mySymbol ? "🔴 Your Turn!" : "🟡 Opponent's Turn...";
+            turnDisplay.style.color = game.turn === mySymbol ? (mySymbol==='Red'?'var(--primary)':'var(--accent)') : (mySymbol==='Red'?'var(--accent)':'var(--primary)');
+            
+            for (let r = 0; r < 6; r++) {
+                for (let c = 0; c < 7; c++) {
+                    const cell = document.getElementById(`c4-${r}-${c}`);
+                    if (game.board[r][c] === 'Red' && !cell.classList.contains('c4-red')) cell.className = 'c4-cell c4-red';
+                    else if (game.board[r][c] === 'Yellow' && !cell.classList.contains('c4-yellow')) cell.className = 'c4-cell c4-yellow';
+                }
+            }
+        }
+
+        // SMOOTH PONG LOGIC
+        const keys = { up: false, down: false };
+
+        document.addEventListener('keydown', (e) => {
+            if (currentGameType !== 'Pong') return;
+            if (['ArrowUp', 'ArrowDown', 'w', 's', ' '].includes(e.key)) e.preventDefault();
+            
+            let changed = false;
+            if ((e.key === 'ArrowUp' || e.key === 'w') && !keys.up) { keys.up = true; changed = true; }
+            if ((e.key === 'ArrowDown' || e.key === 's') && !keys.down) { keys.down = true; changed = true; }
+            
+            if (changed) sendPaddleState();
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (currentGameType !== 'Pong') return;
+            let changed = false;
+            if (e.key === 'ArrowUp' || e.key === 'w') { keys.up = false; changed = true; }
+            if (e.key === 'ArrowDown' || e.key === 's') { keys.down = false; changed = true; }
+            
+            if (changed) sendPaddleState();
+        });
+
+        function sendPaddleState() {
+            let dir = 0;
+            if (keys.up) dir -= 1;
+            if (keys.down) dir += 1;
+            socket.emit('paddleState', { roomName: currentRoom, direction: dir });
+        }
+
+        socket.on('pongUpdate', (state) => {
+            document.getElementById('pong-paddle1').style.top = state.p1y + '%';
+            document.getElementById('pong-paddle2').style.top = state.p2y + '%';
+            document.getElementById('pong-ball').style.left = state.bx + '%';
+            document.getElementById('pong-ball').style.top = state.by + '%';
+            document.getElementById('pong-strike1').innerText = state.strikes1;
+            document.getElementById('pong-strike2').innerText = state.strikes2;
+
+            const cd = document.getElementById('pong-countdown');
+            if (state.countdown) { cd.innerText = state.countdown; cd.style.display = 'block'; } 
+            else { cd.style.display = 'none'; }
+        });
+
+        // GAME OVER
+        socket.on('gameOverScreen', (data) => {
+            currentGameType = null; keys.up = false; keys.down = false; 
+            
+            const title = document.getElementById('go-title');
+            const msg = document.getElementById('go-message');
+            const points = document.getElementById('go-points');
+            const modal = document.getElementById('game-over-modal');
+            
+            if (data.isTie) {
+                title.innerText = "It's a Tie! 🤝"; title.className = "win-text";
+                msg.innerText = "Good game!"; points.innerText = "+0 Points"; points.className = "";
+            } else if (data.winnerId === socket.id) {
+                title.innerText = "Victory! 🏆"; title.className = "win-text";
+                msg.innerText = data.isQuit ? "Your opponent quit out of fear!" : "You crushed them!";
+                points.innerText = "+50 Points"; points.className = "win-text";
+                playerRankDisplay.innerText = data.newWinnerRank; 
+            } else {
+                title.innerText = "Defeat! 💀"; title.className = "lose-text";
+                msg.innerText = data.isQuit ? "You quit the game!" : "Better luck next time.";
+                points.innerText = "-50 Points"; points.className = "lose-text";
+                playerRankDisplay.innerText = data.newLoserRank; 
+            }
+            modal.style.display = 'flex';
+        });
+
+        document.getElementById('returnLobbyBtn').addEventListener('click', () => {
+            document.getElementById('game-over-modal').style.display = 'none';
+            playSection.style.display = 'none'; playSection.classList.remove('fade-in');
+            
+            wheelContainer.style.display = 'none';
+            statusDiv.innerText = "Ready to play?";
+            findMatchBtn.disabled = false;
+            document.getElementById('pong-strike1').innerText = "0";
+            document.getElementById('pong-strike2').innerText = "0";
+            
+            stttBoard.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const macroCell = document.createElement('div'); macroCell.className = 'macro-cell'; macroCell.id = `macro-${i}`;
+                for (let j = 0; j < 9; j++) {
+                    const microCell = document.createElement('div'); microCell.className = 'micro-cell'; microCell.id = `micro-${i}-${j}`;
+                    microCell.onclick = () => { if (currentGameType === 'Super Tic-Tac-Toe') socket.emit('makeMove', { roomName: currentRoom, macroIndex: i, microIndex: j }); };
+                    macroCell.appendChild(microCell);
+                }
+                stttBoard.appendChild(macroCell);
+            }
+            for (let r = 0; r < 6; r++) {
+                for (let c = 0; c < 7; c++) {
+                    document.getElementById(`c4-${r}-${c}`).className = 'c4-cell';
+                }
+            }
+            
+            gameSection.style.display = 'block'; gameSection.classList.add('fade-in');
+        });
+    </script>
+</body>
+</html>
