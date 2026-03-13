@@ -10,38 +10,51 @@
         body { font-family: 'Nunito', sans-serif; text-align: center; margin: 0; padding-top: 30px; background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; overflow-x: hidden; }
         h1 { font-size: 3rem; color: white; text-shadow: 3px 5px 0px rgba(0,0,0,0.1); margin-bottom: 10px; animation: float 3s ease-in-out infinite; }
         .card { background: white; padding: 30px; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); width: 350px; }
-        input, select { width: 85%; padding: 15px; margin: 10px 0; font-size: 16px; border-radius: 15px; border: 2px solid #eee; font-family: 'Nunito'; }
+        input[type="text"], input[type="password"], select, textarea { width: 85%; padding: 15px; margin: 10px 0; font-size: 16px; border-radius: 15px; border: 2px solid #eee; font-family: 'Nunito'; }
         button { padding: 12px 25px; font-size: 1.2rem; font-weight: 800; cursor: pointer; border-radius: 20px; border: none; background: var(--primary); color: white; margin: 10px 5px; transition: all 0.2s; box-shadow: 0 6px 15px rgba(255,107,107,0.4); }
         button:hover { transform: translateY(-4px) scale(1.05); } button:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; transform: none; }
+        
         #game-section, #play-section { display: none; } 
         #wheel-container { margin: 20px auto; display: none; }
         #wheel { width: 240px; height: 80px; line-height: 80px; margin: 0 auto; background: linear-gradient(135deg, #FCA311 0%, var(--accent) 100%); color: white; font-weight: 900; font-size: 1.5rem; border-radius: 40px; border: 5px solid white; box-shadow: 0 10px 25px rgba(252, 163, 17, 0.5); transition: transform 3s cubic-bezier(0.25, 1, 0.5, 1); }
         .spinning { transform: rotate(1440deg) scale(1.2); } .fade-out { animation: fadeOut 0.5s ease forwards; pointer-events: none; } .fade-in { animation: fadeIn 0.5s ease forwards; }
         @keyframes fadeOut { to { opacity: 0; transform: scale(0.9); } } @keyframes fadeIn { from { opacity: 0; transform: scale(1.1); } to { opacity: 1; transform: scale(1); } }
-        .game-header { display: flex; justify-content: space-between; align-items: center; width: 600px; margin: 0 auto 10px auto; }
-        #vs-display { font-size: 1.5rem; font-weight: 900; color: white; text-shadow: 2px 2px 0px rgba(0,0,0,0.1); }
-        #quitBtn { background: #dc3545; font-size: 1rem; padding: 8px 15px; margin: 0; } #player-role-display { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; color: var(--text); }
+        
+        /* Dashboard Profile UI */
+        .dash-profile-top { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 15px; }
+        #dashPfpDisplay { width: 80px; height: 80px; border-radius: 50%; border: 4px solid var(--primary); background: #eee; object-fit: cover; }
+        .dash-details { text-align: left; }
+
+        /* Rich VS Header */
+        .game-header { display: flex; justify-content: space-between; align-items: center; width: 750px; margin: 0 auto 10px auto; background: rgba(255,255,255,0.2); padding: 10px 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .player-info { display: flex; align-items: center; gap: 10px; background: white; padding: 5px 15px 5px 5px; border-radius: 50px; font-weight: bold; font-size: 1.1rem; }
+        .player-info img { width: 40px; height: 40px; border-radius: 50%; background: #eee; border: 2px solid var(--primary); object-fit: cover; }
+        .player-rank { color: var(--primary); font-size: 0.9rem; }
+        #quitBtn { background: #dc3545; font-size: 1rem; padding: 8px 15px; margin: 0; } 
+        #player-role-display { font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; color: var(--text); }
         #turn-display { font-size: 1.5rem; font-weight: 900; margin-bottom: 15px; color: var(--secondary); background: white; padding: 10px 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); display: inline-block; }
         
+        /* Game Boards */
         #sttt-container, #c4-container, #dab-container, #pong-container, #bs-container, #chk-container { display: none; margin: 0 auto; }
-        #sttt-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; background: var(--text); padding: 8px; border-radius: 15px; width: max-content; } .macro-cell { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 3px; background: white; padding: 5px; border-radius: 8px; width: 140px; height: 140px; transition: all 0.3s; } .macro-cell.disabled { opacity: 0.6; pointer-events: none; } .macro-cell.highlight { box-shadow: 0 0 15px 5px var(--accent); transform: scale(1.03); z-index: 10; position: relative; } .micro-cell { line-height: 1; background: #f1f2f6; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 900; cursor: pointer; border-radius: 4px; width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; } .mark-x, .mark-o, .macro-winner { animation: popMark 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; } .mark-x, .winner-x { color: var(--primary); } .mark-o, .winner-o { color: var(--secondary); } @keyframes popMark { 0% { transform: scale(0.3); opacity: 0; } 70% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } } .macro-winner { grid-column: span 3; grid-row: span 3; display: flex; align-items: center; justify-content: center; font-size: 5rem; font-weight: 900; height: 100%; }
-        #c4-board { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; background: var(--c4blue); padding: 15px; border-radius: 20px; width: max-content; border: 4px solid #0056b3; } .c4-cell { width: 60px; height: 60px; background: #c2e9fb; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: inset 0 5px 10px rgba(0,0,0,0.2); transition: background 0.3s; } .c4-cell:hover { opacity: 0.8; } .c4-red { background: var(--primary); box-shadow: inset 0 -5px 10px rgba(0,0,0,0.2), 0 5px 10px rgba(0,0,0,0.3); animation: dropIn 0.4s ease forwards; } .c4-yellow { background: var(--accent); box-shadow: inset 0 -5px 10px rgba(0,0,0,0.2), 0 5px 10px rgba(0,0,0,0.3); animation: dropIn 0.4s ease forwards; } @keyframes dropIn { 0% { transform: translateY(-200px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
-        #dab-container { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); } #dab-board { display: grid; grid-template-columns: 15px 60px 15px 60px 15px 60px 15px; grid-template-rows: 15px 60px 15px 60px 15px 60px 15px; gap: 0; background: #f1f2f6; border-radius: 10px; padding: 10px; } .dab-dot { width: 15px; height: 15px; background: #2F3542; border-radius: 50%; } .dab-hline { height: 15px; cursor: pointer; transition: background 0.2s; } .dab-hline:hover { background: #dfe4ea; } .dab-vline { width: 15px; cursor: pointer; transition: background 0.2s; } .dab-vline:hover { background: #dfe4ea; } .dab-box { background: transparent; transition: background 0.3s; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; } .dab-line-red { background: var(--primary) !important; cursor: default; } .dab-line-blue { background: var(--secondary) !important; cursor: default; } .dab-box-red { background: rgba(255, 107, 107, 0.3); color: var(--primary); } .dab-box-blue { background: rgba(78, 205, 196, 0.3); color: var(--secondary); }
+        
+        /* FIXED: Super Tic-Tac-Toe Centering */
+        #sttt-board { display: grid; grid-template-columns: repeat(3, 140px); gap: 8px; background: var(--text); padding: 8px; border-radius: 15px; width: max-content; margin: 0 auto; } 
+        .macro-cell { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 3px; background: white; padding: 5px; border-radius: 8px; width: 140px; height: 140px; transition: all 0.3s; } .macro-cell.disabled { opacity: 0.6; pointer-events: none; } .macro-cell.highlight { box-shadow: 0 0 15px 5px var(--accent); transform: scale(1.03); z-index: 10; position: relative; } .micro-cell { line-height: 1; background: #f1f2f6; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 900; cursor: pointer; border-radius: 4px; width: 100%; height: 100%; box-sizing: border-box; overflow: hidden; } .mark-x, .mark-o, .macro-winner { animation: popMark 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; } .mark-x, .winner-x { color: var(--primary); } .mark-o, .winner-o { color: var(--secondary); } @keyframes popMark { 0% { transform: scale(0.3); opacity: 0; } 70% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } } .macro-winner { grid-column: span 3; grid-row: span 3; display: flex; align-items: center; justify-content: center; font-size: 5rem; font-weight: 900; height: 100%; }
+        
+        /* FIXED: Connect 4 Math and Centering */
+        #c4-board { display: grid; grid-template-columns: repeat(7, 60px); gap: 10px; background: var(--c4blue); padding: 15px; border-radius: 20px; width: max-content; margin: 0 auto; border: 4px solid #0056b3; } 
+        .c4-cell { width: 60px; height: 60px; background: #c2e9fb; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: inset 0 5px 10px rgba(0,0,0,0.2); transition: background 0.3s; } .c4-cell:hover { opacity: 0.8; } .c4-red { background: var(--primary); box-shadow: inset 0 -5px 10px rgba(0,0,0,0.2), 0 5px 10px rgba(0,0,0,0.3); animation: dropIn 0.4s ease forwards; } .c4-yellow { background: var(--accent); box-shadow: inset 0 -5px 10px rgba(0,0,0,0.2), 0 5px 10px rgba(0,0,0,0.3); animation: dropIn 0.4s ease forwards; } @keyframes dropIn { 0% { transform: translateY(-200px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+        
+        /* FIXED: Dots and Boxes Centering */
+        #dab-container { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: max-content; margin: 0 auto; } 
+        #dab-board { display: grid; grid-template-columns: 15px 60px 15px 60px 15px 60px 15px; grid-template-rows: 15px 60px 15px 60px 15px 60px 15px; gap: 0; background: #f1f2f6; border-radius: 10px; padding: 10px; } .dab-dot { width: 15px; height: 15px; background: #2F3542; border-radius: 50%; } .dab-hline { height: 15px; cursor: pointer; transition: background 0.2s; } .dab-hline:hover { background: #dfe4ea; } .dab-vline { width: 15px; cursor: pointer; transition: background 0.2s; } .dab-vline:hover { background: #dfe4ea; } .dab-box { background: transparent; transition: background 0.3s; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; } .dab-line-red { background: var(--primary) !important; cursor: default; } .dab-line-blue { background: var(--secondary) !important; cursor: default; } .dab-box-red { background: rgba(255, 107, 107, 0.3); color: var(--primary); } .dab-box-blue { background: rgba(78, 205, 196, 0.3); color: var(--secondary); }
+        
         #pong-container { position:relative; width: 750px; height: 450px; background: #2F3542; border-radius: 15px; overflow: hidden; border: 5px solid white; box-shadow: 0 15px 35px rgba(0,0,0,0.2); } #pong-line { position:absolute; left:50%; top:0; bottom:0; width:4px; margin-left:-2px; background: rgba(255,255,255,0.2); } #pong-paddle1 { position:absolute; left: 5%; width: 12px; height: 90px; background: var(--primary); transform: translate(-50%, -50%); border-radius:5px; } #pong-paddle2 { position:absolute; left: 95%; width: 12px; height: 90px; background: var(--secondary); transform: translate(-50%, -50%); border-radius:5px; } #pong-ball { position:absolute; width: 20px; height: 20px; background: var(--accent); transform: translate(-50%, -50%); border-radius:50%; } .strike-text { position:absolute; top: 15px; font-size: 1.8rem; font-weight:900; } #pong-countdown { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); font-size:5rem; font-weight:900; color:white; text-shadow:2px 2px 10px rgba(0,0,0,0.5); z-index: 10; display: none; }
         .bs-grid-wrapper { display: flex; gap: 30px; justify-content: center; align-items: flex-start; } .bs-board-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 10px; color: white; } .bs-board { display: grid; grid-template-columns: repeat(10, 35px); grid-template-rows: repeat(10, 35px); gap: 2px; background: var(--c4blue); padding: 5px; border-radius: 10px; border: 4px solid #0056b3; } .bs-cell { width: 35px; height: 35px; background: #c2e9fb; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; cursor: pointer; transition: background 0.2s; } .bs-cell:hover { opacity: 0.8; } .bs-ship { background: #576574; } .bs-miss { background: white; color: #a4b0be; } .bs-hit { background: var(--primary); color: white; animation: popMark 0.3s ease; } #bs-setup-menu { margin-top: 20px; background: white; padding: 20px; border-radius: 15px; display: inline-block; }
-        
-        /* NEW: Checkers UI */
-        #chk-board { display: grid; grid-template-columns: repeat(8, 50px); grid-template-rows: repeat(8, 50px); border: 10px solid #8B4513; border-radius: 10px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); width: max-content; margin: 0 auto; }
-        .chk-cell { width: 50px; height: 50px; display: flex; justify-content: center; align-items: center; }
-        .chk-light { background: #DEB887; }
-        .chk-dark { background: #8B4513; cursor: pointer; }
-        .chk-dark:hover { opacity: 0.8; }
-        .chk-piece { width: 40px; height: 40px; border-radius: 50%; box-shadow: inset -3px -3px 5px rgba(0,0,0,0.3), 3px 3px 5px rgba(0,0,0,0.4); display: flex; justify-content: center; align-items: center; font-size: 1.5rem; color: white; pointer-events: none; }
-        .chk-red { background: #dc3545; }
-        .chk-black { background: #2F3542; }
-        .chk-selected { border: 3px solid var(--accent); box-sizing: border-box; }
+        #chk-board { display: grid; grid-template-columns: repeat(8, 50px); grid-template-rows: repeat(8, 50px); border: 10px solid #8B4513; border-radius: 10px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); width: max-content; margin: 0 auto; } .chk-cell { width: 50px; height: 50px; display: flex; justify-content: center; align-items: center; } .chk-light { background: #DEB887; } .chk-dark { background: #8B4513; cursor: pointer; } .chk-dark:hover { opacity: 0.8; } .chk-piece { width: 40px; height: 40px; border-radius: 50%; box-shadow: inset -3px -3px 5px rgba(0,0,0,0.3), 3px 3px 5px rgba(0,0,0,0.4); display: flex; justify-content: center; align-items: center; font-size: 1.5rem; color: white; pointer-events: none; } .chk-red { background: #dc3545; } .chk-black { background: #2F3542; } .chk-selected { border: 3px solid var(--accent); box-sizing: border-box; }
 
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; } .modal-content { background: white; padding: 40px; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); width: 400px; text-align: center; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; } @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } } .leaderboard-list { text-align: left; margin: 20px 0; font-size: 1.2rem; font-weight: bold; color: var(--text); } .leaderboard-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 2px solid #eee; } #go-title { font-size: 3rem; margin: 0; font-weight: 900; } #go-points { font-size: 1.5rem; margin: 10px 0 30px 0; font-weight: bold; } .win-text { color: var(--secondary); } .lose-text { color: var(--primary); }
+        /* Modals */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; } .modal-content { background: white; padding: 40px; border-radius: 30px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); width: 400px; text-align: center; max-height: 90vh; overflow-y: auto; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; } @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } } .leaderboard-list { text-align: left; margin: 20px 0; font-size: 1.2rem; font-weight: bold; color: var(--text); } .leaderboard-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 2px solid #eee; } #go-title { font-size: 3rem; margin: 0; font-weight: 900; } #go-points { font-size: 1.5rem; margin: 10px 0 30px 0; font-weight: bold; } .win-text { color: var(--secondary); } .lose-text { color: var(--primary); }
         #online-counter { position: fixed; bottom: 20px; right: 20px; background: rgba(255,255,255,0.9); padding: 10px 20px; border-radius: 30px; font-weight: 800; color: var(--text); box-shadow: 0 5px 15px rgba(0,0,0,0.1); font-size: 1.1rem; z-index: 50; }
         #chat-box { height: 150px; overflow-y: auto; background: #f1f2f6; border-radius: 15px; padding: 10px; text-align: left; margin-bottom: 10px; font-size: 0.9rem; } .chat-msg { margin: 5px 0; } .chat-msg span { font-weight: bold; color: var(--primary); }
     </style>
@@ -51,194 +64,163 @@
     <h1>Boarders</h1>
 
     <div id="auth-section" class="card">
-        <h2>Join the Game</h2><input type="text" id="usernameInput" placeholder="Username" autocomplete="off"><br><input type="password" id="passwordInput" placeholder="Password"><br><button id="loginBtn">Login</button> <button id="registerBtn">Register</button><div id="auth-error" style="color:var(--primary); font-weight:bold; margin-top:10px;"></div>
+        <h2>Join the Game</h2>
+        <input type="text" id="usernameInput" placeholder="Username" autocomplete="off"><br>
+        <input type="password" id="passwordInput" placeholder="Password"><br>
+        <button id="loginBtn">Login</button> <button id="registerBtn">Register</button>
+        <div id="auth-error" style="color:var(--primary); font-weight:bold; margin-top:10px;"></div>
     </div>
 
     <div id="game-section" class="card">
-        <h2>Hi, <span id="playerNameDisplay">Player</span>! 👋</h2><p style="font-size:1.2rem; font-weight:bold;">Rank Points: <span id="playerRankDisplay" style="color:var(--primary);">100</span> ⭐</p>
-        <button id="findMatchBtn">🔍 Search for Game</button><button id="privateGameMenuBtn" style="background: var(--accent); color: var(--text);">🔒 Private Game</button><br><button id="viewLeaderboardBtn" style="background: var(--secondary);">🏆 Leaderboard</button><br><button id="logoutBtn" style="background: #ced6e0; color: var(--text); box-shadow: none;">Logout</button>
-        <div id="status" style="margin-top: 15px; font-weight: bold; color: #57606f;">Ready to play?</div><div id="wheel-container"><div id="wheel">???</div></div>
+        <div class="dash-profile-top">
+            <img id="dashPfpDisplay" src="" alt="Profile Pic">
+            <div class="dash-details">
+                <h2 style="margin: 0;">Hi, <span id="playerNameDisplay">Player</span>! 👋</h2>
+                <p style="margin: 5px 0; font-size:1.1rem; font-weight:bold;">Rank: <span id="playerRankDisplay" style="color:var(--primary);">100</span> ⭐</p>
+                <i id="playerDescDisplay" style="color: #636e72; font-size: 0.9rem;"></i>
+            </div>
+        </div>
+        
+        <button id="findMatchBtn">🔍 Search for Game</button><button id="privateGameMenuBtn" style="background: var(--accent); color: var(--text);">🔒 Private Game</button><br>
+        <button id="viewLeaderboardBtn" style="background: var(--secondary);">🏆 Leaderboard</button><button id="openAccountBtn" style="background: #a29bfe;">⚙️ Account</button><br>
+        <button id="logoutBtn" style="background: #ced6e0; color: var(--text); box-shadow: none;">Logout</button>
+        <div id="status" style="margin-top: 15px; font-weight: bold; color: #57606f;">Ready to play?</div>
+        <div id="wheel-container"><div id="wheel">???</div></div>
     </div>
 
     <div id="play-section">
-        <div class="game-header"><div id="vs-display">You vs Opponent</div><button id="quitBtn">Quit Game</button></div>
+        <div class="game-header">
+            <div id="p1-info" class="player-info"><img id="p1-pfp" src=""><span id="p1-name">P1</span> <span id="p1-rank" class="player-rank"></span></div>
+            <div style="font-size: 2rem; font-weight: 900; color: white;">VS</div>
+            <div id="p2-info" class="player-info"><img id="p2-pfp" src=""><span id="p2-name">P2</span> <span id="p2-rank" class="player-rank"></span></div>
+            <button id="quitBtn">Quit</button>
+        </div>
+        
         <div id="player-role-display"></div><div id="turn-display">Waiting for match...</div>
         
         <div id="sttt-container"><div id="sttt-board"></div></div>
         <div id="c4-container"><div id="c4-board"></div></div>
         <div id="dab-container"><h3 style="margin-top:0;">🔴 <span id="dab-score-red">0</span> &nbsp;-&nbsp; <span id="dab-score-blue">0</span> 🔵</h3><div id="dab-board"></div></div>
-        <div id="chk-container"><div id="chk-board"></div></div> <div id="bs-container">
-            <div class="bs-grid-wrapper"><div><div class="bs-board-title">Your Ships</div><div id="bs-my-board" class="bs-board"></div></div><div><div class="bs-board-title">Target Radar</div><div id="bs-tracking-board" class="bs-board"></div></div></div>
-            <div id="bs-setup-menu"><h3 style="margin-top:0;">Prepare for Battle!</h3><button id="bs-randomize-btn" style="background: var(--secondary);">🎲 Randomize Formation</button><button id="bs-ready-btn">✅ Ready!</button></div>
+        <div id="chk-container"><div id="chk-board"></div></div> 
+        
+        <div id="bs-container">
+            <div class="bs-grid-wrapper">
+                <div><div class="bs-board-title">Your Ships</div><div id="bs-my-board" class="bs-board"></div></div>
+                <div><div class="bs-board-title">Target Radar</div><div id="bs-tracking-board" class="bs-board"></div></div>
+            </div>
+            <div id="bs-setup-menu">
+                <h3 style="margin-top:0;">Prepare for Battle!</h3>
+                <button id="bs-randomize-btn" style="background: var(--secondary);">🎲 Randomize Formation</button>
+                <button id="bs-ready-btn">✅ Ready!</button>
+            </div>
         </div>
 
-        <div id="pong-container"><div class="strike-text" style="left: 20%; color:var(--primary);">Strikes: <span id="pong-strike1">0</span>/3 ❌</div><div class="strike-text" style="right: 20%; color:var(--secondary);">Strikes: <span id="pong-strike2">0</span>/3 ❌</div><div id="pong-line"></div><div id="pong-countdown">3</div><div id="pong-paddle1"></div><div id="pong-paddle2"></div><div id="pong-ball"></div></div>
+        <div id="pong-container">
+            <div class="strike-text" style="left: 20%; color:var(--primary);">Strikes: <span id="pong-strike1">0</span>/3 ❌</div>
+            <div class="strike-text" style="right: 20%; color:var(--secondary);">Strikes: <span id="pong-strike2">0</span>/3 ❌</div>
+            <div id="pong-line"></div><div id="pong-countdown">3</div><div id="pong-paddle1"></div><div id="pong-paddle2"></div><div id="pong-ball"></div>
+        </div>
     </div>
 
-    <div id="leaderboard-modal" class="modal-overlay"><div class="modal-content"><h2 style="font-size:2rem; margin-top:0;">Top 10 Boarders 🏆</h2><div id="leaderboard-content" class="leaderboard-list">Loading...</div><button id="closeLeaderboardBtn" style="width:100%;">Close</button></div></div>
-    <div id="game-over-modal" class="modal-overlay"><div class="modal-content"><h2 id="go-title">Game Over</h2><p id="go-message" style="font-size:1.2rem; margin:0;"></p><p id="go-points"></p><button id="returnLobbyBtn" style="width:100%;">Return to Lobby</button></div></div>
-    <div id="private-menu-modal" class="modal-overlay"><div class="modal-content"><h2>Private Game</h2><button id="hostBtn" style="width:100%;">Host a Game</button><button id="joinBtn" style="width:100%; background: var(--secondary);">Join a Game</button><button id="closePrivateMenuBtn" style="width:100%; background: #ced6e0; color: var(--text); box-shadow: none;">Cancel</button></div></div>
-    <div id="host-modal" class="modal-overlay"><div class="modal-content"><h2>Create Room Code</h2><input type="text" id="hostCodeInput" placeholder="e.g. 1234" maxlength="4"><div id="host-error" style="color:var(--primary); font-weight:bold; margin-bottom:10px;"></div><button id="confirmHostBtn" style="width:100%;">Create Room</button><button id="cancelHostBtn" style="width:100%; background: #ced6e0; color: var(--text); box-shadow: none;">Cancel</button></div></div>
-    <div id="join-modal" class="modal-overlay"><div class="modal-content"><h2>Join Room</h2><input type="text" id="joinCodeInput" placeholder="Enter Code" maxlength="4"><div id="join-error" style="color:var(--primary); font-weight:bold; margin-bottom:10px;"></div><button id="confirmJoinBtn" style="width:100%; background: var(--secondary);">Join Room</button><button id="cancelJoinBtn" style="width:100%; background: #ced6e0; color: var(--text); box-shadow: none;">Cancel</button></div></div>
-    
-    <div id="private-lobby-modal" class="modal-overlay"><div class="modal-content"><h2>Room Code: <span id="lobbyCodeDisplay" style="color:var(--primary);"></span></h2><p style="font-weight:bold;">Players: <span id="lobbyPlayersDisplay"></span>/2</p><div id="chat-box"></div><div style="display:flex; gap:5px;"><input type="text" id="chatInput" placeholder="Say hi..." style="margin:0; width:70%;"><button id="sendChatBtn" style="margin:0; width:30%; padding:0; font-size:1rem;">Send</button></div><div id="hostControls" style="display:none; margin-top:15px; border-top:2px solid #eee; padding-top:15px;"><label style="font-weight:bold;">Select Game:</label>
-    <select id="gameSelector">
-        <option value="Random">🎲 Random</option>
-        <option value="Super Tic-Tac-Toe">❌ Super Tic-Tac-Toe</option>
-        <option value="Connect 4">🔴 Connect 4</option>
-        <option value="Dots and Boxes">🟦 Dots and Boxes</option>
-        <option value="Battleship">🚢 Battleship</option>
-        <option value="Checkers">🔴 Checkers</option>
-        <option value="Pong">🏓 Pong</option>
-    </select>
-    <button id="startPrivateBtn" style="width:100%;" disabled>Waiting for player...</button></div><button id="leaveLobbyBtn" style="width:100%; margin-top:10px; background: #ced6e0; color: var(--text); box-shadow: none;">Leave Lobby</button></div></div>
+    <div id="account-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Account Settings</h2>
+            <img id="settingsPfpPreview" src="" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--primary); margin-bottom: 10px; object-fit: cover;">
+            
+            <input type="text" id="setProfilePic" placeholder="Profile Pic Image URL (Leave blank for default)">
+            <textarea id="setDesc" placeholder="Bio / Description" rows="2"></textarea>
+            
+            <hr style="border: 1px solid #eee; margin: 15px 0;">
+            <input type="text" id="setUsername" placeholder="Change Username">
+            <input type="password" id="setPassword" placeholder="Change Password">
+            
+            <div style="margin: 15px 0; text-align: left; background: #f1f2f6; padding: 10px; border-radius: 10px;">
+                <label style="font-weight: bold; cursor: pointer;">
+                    <input type="checkbox" id="setAnon"> 🕵️ Mask profile in Public Games
+                </label>
+                <p style="font-size: 0.8rem; margin: 5px 0 0 0; color: #636e72;">When checked, your name and avatar are hidden from random opponents (but visible in Private Rooms).</p>
+            </div>
+            
+            <div id="account-error" style="color:var(--primary); font-weight:bold; margin-bottom:10px;"></div>
+            <button id="saveAccountBtn" style="width:100%;">Save Changes</button>
+            <button id="closeAccountBtn" style="width:100%; background: #ced6e0; color: var(--text); box-shadow: none;">Cancel</button>
+        </div>
+    </div>
+
+    <div id="leaderboard-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 style="font-size:2rem; margin-top:0;">Top 10 Boarders 🏆</h2>
+            <div id="leaderboard-content" class="leaderboard-list">Loading...</div>
+            <button id="closeLeaderboardBtn" style="width:100%;">Close</button>
+        </div>
+    </div>
+
+    <div id="game-over-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 id="go-title">Game Over</h2>
+            <p id="go-message" style="font-size:1.2rem; margin:0;"></p><p id="go-points"></p>
+            <button id="returnLobbyBtn" style="width:100%;">Return to Lobby</button>
+        </div>
+    </div>
+
+    <div id="private-menu-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Private Game</h2>
+            <button id="hostBtn" style="width:100%;">Host a Game</button>
+            <button id="joinBtn" style="width:100%; background: var(--secondary);">Join a Game</button>
+            <button id="closePrivateMenuBtn" style="width:100%; background: #ced6e0; color: var(--text); box-shadow: none;">Cancel</button>
+        </div>
+    </div>
+
+    <div id="host-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Create Room Code</h2>
+            <input type="text" id="hostCodeInput" placeholder="e.g. 1234" maxlength="4">
+            <div id="host-error" style="color:var(--primary); font-weight:bold; margin-bottom:10px;"></div>
+            <button id="confirmHostBtn" style="width:100%;">Create Room</button>
+            <button id="cancelHostBtn" style="width:100%; background: #ced6e0; color: var(--text); box-shadow: none;">Cancel</button>
+        </div>
+    </div>
+
+    <div id="join-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Join Room</h2>
+            <input type="text" id="joinCodeInput" placeholder="Enter Code" maxlength="4">
+            <div id="join-error" style="color:var(--primary); font-weight:bold; margin-bottom:10px;"></div>
+            <button id="confirmJoinBtn" style="width:100%; background: var(--secondary);">Join Room</button>
+            <button id="cancelJoinBtn" style="width:100%; background: #ced6e0; color: var(--text); box-shadow: none;">Cancel</button>
+        </div>
+    </div>
+
+    <div id="private-lobby-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Room Code: <span id="lobbyCodeDisplay" style="color:var(--primary);"></span></h2>
+            <p style="font-weight:bold;">Players: <span id="lobbyPlayersDisplay"></span>/2</p>
+            <div id="chat-box"></div>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="chatInput" placeholder="Say hi..." style="margin:0; width:70%;">
+                <button id="sendChatBtn" style="margin:0; width:30%; padding:0; font-size:1rem;">Send</button>
+            </div>
+            <div id="hostControls" style="display:none; margin-top:15px; border-top:2px solid #eee; padding-top:15px;">
+                <label style="font-weight:bold;">Select Game:</label>
+                <select id="gameSelector">
+                    <option value="Random">🎲 Random</option>
+                    <option value="Super Tic-Tac-Toe">❌ Super Tic-Tac-Toe</option>
+                    <option value="Connect 4">🔴 Connect 4</option>
+                    <option value="Dots and Boxes">🟦 Dots and Boxes</option>
+                    <option value="Battleship">🚢 Battleship</option>
+                    <option value="Checkers">🔴 Checkers</option>
+                    <option value="Pong">🏓 Pong</option>
+                </select>
+                <button id="startPrivateBtn" style="width:100%;" disabled>Waiting for player...</button>
+            </div>
+            <button id="leaveLobbyBtn" style="width:100%; margin-top:10px; background: #ced6e0; color: var(--text); box-shadow: none;">Leave Lobby</button>
+        </div>
+    </div>
     
     <div id="online-counter">🟢 Players Online: 0</div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        
-        const authSection = document.getElementById('auth-section'); const gameSection = document.getElementById('game-section'); const playSection = document.getElementById('play-section');
-        const usernameInput = document.getElementById('usernameInput'); const passwordInput = document.getElementById('passwordInput'); const authError = document.getElementById('auth-error');
-        const playerNameDisplay = document.getElementById('playerNameDisplay'); const playerRankDisplay = document.getElementById('playerRankDisplay');
-        const findMatchBtn = document.getElementById('findMatchBtn'); const statusDiv = document.getElementById('status'); const wheelContainer = document.getElementById('wheel-container'); const wheel = document.getElementById('wheel');
-        const vsDisplay = document.getElementById('vs-display'); const roleDisplay = document.getElementById('player-role-display'); const turnDisplay = document.getElementById('turn-display');
-        
-        const stttContainer = document.getElementById('sttt-container'); const stttBoard = document.getElementById('sttt-board');
-        const c4Container = document.getElementById('c4-container'); const c4Board = document.getElementById('c4-board');
-        const dabContainer = document.getElementById('dab-container'); const dabBoard = document.getElementById('dab-board');
-        const pongContainer = document.getElementById('pong-container');
-        const bsContainer = document.getElementById('bs-container'); const bsMyBoard = document.getElementById('bs-my-board'); const bsTrackingBoard = document.getElementById('bs-tracking-board');
-        const chkContainer = document.getElementById('chk-container'); const chkBoard = document.getElementById('chk-board');
-
-        let currentRoom = null, mySymbol = null, currentGameType = null, myUsername = null; let myPrivateCode = null; let isLobbyHost = false; let isPrivateGame = false;
-        let localBattleshipBoard = Array(10).fill(null).map(() => Array(10).fill(0));
-        let chkSelected = null; let lastChkGame = null; // NEW: Checkers state
-
-        socket.on('onlineCount', (count) => { document.getElementById('online-counter').innerText = `🟢 Players Online: ${count}`; });
-        window.onload = () => { const savedUser = localStorage.getItem('boarders_account'); if (savedUser) { const { username, password } = JSON.parse(savedUser); usernameInput.value = username; passwordInput.value = password; handleAuth('login'); } };
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { document.getElementById('leaderboard-modal').style.display = 'none'; document.getElementById('private-menu-modal').style.display = 'none'; document.getElementById('host-modal').style.display = 'none'; document.getElementById('join-modal').style.display = 'none'; } if (e.key === 'Enter') { const active = document.activeElement; if (active === document.getElementById('chatInput')) document.getElementById('sendChatBtn').click(); else if (active === document.getElementById('hostCodeInput')) document.getElementById('confirmHostBtn').click(); else if (active === document.getElementById('joinCodeInput')) document.getElementById('confirmJoinBtn').click(); else if (active === document.getElementById('usernameInput') || active === document.getElementById('passwordInput')) document.getElementById('loginBtn').click(); } });
-
-        async function handleAuth(action) { const username = usernameInput.value, password = passwordInput.value; if (!username || !password) return authError.innerText = "Enter username and password."; const res = await fetch(`/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) }); const data = await res.json(); if (res.ok) { localStorage.setItem('boarders_account', JSON.stringify({ username, password })); myUsername = data.user.username; authSection.style.display = 'none'; gameSection.style.display = 'block'; playerNameDisplay.innerText = data.user.username; playerRankDisplay.innerText = data.user.rank; } else { localStorage.removeItem('boarders_account'); authError.innerText = data.error; } }
-        document.getElementById('registerBtn').addEventListener('click', () => handleAuth('register')); document.getElementById('loginBtn').addEventListener('click', () => handleAuth('login')); document.getElementById('logoutBtn').addEventListener('click', () => { localStorage.removeItem('boarders_account'); location.reload(); });
-        document.getElementById('viewLeaderboardBtn').addEventListener('click', async () => { document.getElementById('leaderboard-modal').style.display = 'flex'; const res = await fetch('/leaderboard'); const data = await res.json(); document.getElementById('leaderboard-content').innerHTML = data.map((u, i) => `<div class="leaderboard-item"><span>#${i+1} ${u.username}</span><span style="color:var(--primary);">${u.rank} ⭐</span></div>`).join(''); }); document.getElementById('closeLeaderboardBtn').addEventListener('click', () => { document.getElementById('leaderboard-modal').style.display = 'none'; });
-
-        findMatchBtn.addEventListener('click', () => { socket.emit('joinQueue', myUsername); statusDiv.innerText = 'Searching for a match... ⏳'; findMatchBtn.disabled = true; }); document.getElementById('quitBtn').addEventListener('click', () => { socket.emit('quitGame'); });
-        socket.on('matchFound', (data) => { document.getElementById('private-lobby-modal').style.display = 'none'; statusDiv.innerText = `Match found! 🎯`; wheelContainer.style.display = 'block'; setTimeout(() => wheel.classList.add('spinning'), 50); setTimeout(() => { wheel.classList.remove('spinning'); wheel.innerText = data.game; statusDiv.innerText = `${data.game} Selected! Get ready... 🚀`; }, 3000); });
-        
-        document.getElementById('privateGameMenuBtn').addEventListener('click', () => document.getElementById('private-menu-modal').style.display = 'flex'); document.getElementById('closePrivateMenuBtn').addEventListener('click', () => document.getElementById('private-menu-modal').style.display = 'none'); document.getElementById('hostBtn').addEventListener('click', () => { document.getElementById('private-menu-modal').style.display = 'none'; document.getElementById('host-modal').style.display = 'flex'; }); document.getElementById('cancelHostBtn').addEventListener('click', () => document.getElementById('host-modal').style.display = 'none'); document.getElementById('joinBtn').addEventListener('click', () => { document.getElementById('private-menu-modal').style.display = 'none'; document.getElementById('join-modal').style.display = 'flex'; }); document.getElementById('cancelJoinBtn').addEventListener('click', () => document.getElementById('join-modal').style.display = 'none');
-        document.getElementById('confirmHostBtn').addEventListener('click', () => { const code = document.getElementById('hostCodeInput').value; if (code.length !== 4) return document.getElementById('host-error').innerText = "Code must be 4 characters."; document.getElementById('host-error').innerText = ""; socket.emit('createPrivateRoom', { username: myUsername, code }); }); document.getElementById('confirmJoinBtn').addEventListener('click', () => { const code = document.getElementById('joinCodeInput').value; if (code.length !== 4) return document.getElementById('join-error').innerText = "Code must be 4 characters."; document.getElementById('join-error').innerText = ""; socket.emit('joinPrivateRoom', { username: myUsername, code }); });
-        socket.on('privateError', (msg) => { alert(msg); location.reload(); }); socket.on('privateRoomJoined', (data) => { document.getElementById('host-modal').style.display = 'none'; document.getElementById('join-modal').style.display = 'none'; document.getElementById('private-lobby-modal').style.display = 'flex'; myPrivateCode = data.code; isLobbyHost = data.isHost; document.getElementById('lobbyCodeDisplay').innerText = data.code; document.getElementById('lobbyPlayersDisplay').innerText = data.players.join(' & '); document.getElementById('chat-box').innerHTML = '<div class="chat-msg"><i>Welcome to the private lobby!</i></div>'; if (isLobbyHost) document.getElementById('hostControls').style.display = 'block'; });
-        socket.on('updateLobbyPlayers', (players) => { document.getElementById('lobbyPlayersDisplay').innerText = players.join(' & '); if (players.length === 2 && isLobbyHost) { const startBtn = document.getElementById('startPrivateBtn'); startBtn.disabled = false; startBtn.innerText = "Start Game! 🚀"; } });
-        document.getElementById('sendChatBtn').addEventListener('click', () => { const text = document.getElementById('chatInput').value; if (text && myPrivateCode) { socket.emit('sendPrivateChat', { code: myPrivateCode, message: text, username: myUsername }); document.getElementById('chatInput').value = ''; } }); socket.on('updatePrivateChat', (msg) => { const chatBox = document.getElementById('chat-box'); chatBox.innerHTML += `<div class="chat-msg"><span>${msg.username}:</span> ${msg.text}</div>`; chatBox.scrollTop = chatBox.scrollHeight; });
-        document.getElementById('startPrivateBtn').addEventListener('click', () => { socket.emit('startPrivateGame', { code: myPrivateCode, gameSelection: document.getElementById('gameSelector').value }); }); document.getElementById('leaveLobbyBtn').addEventListener('click', () => location.reload());
-
-        // GRIDS
-        for (let i = 0; i < 9; i++) { const macroCell = document.createElement('div'); macroCell.className = 'macro-cell'; macroCell.id = `macro-${i}`; for (let j = 0; j < 9; j++) { const microCell = document.createElement('div'); microCell.className = 'micro-cell'; microCell.id = `micro-${i}-${j}`; microCell.onclick = () => { if (currentGameType === 'Super Tic-Tac-Toe') socket.emit('makeMove', { roomName: currentRoom, macroIndex: i, microIndex: j }); }; macroCell.appendChild(microCell); } stttBoard.appendChild(macroCell); }
-        for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = document.createElement('div'); cell.className = 'c4-cell'; cell.id = `c4-${r}-${c}`; cell.onclick = () => { if (currentGameType === 'Connect 4') socket.emit('makeC4Move', { roomName: currentRoom, col: c }); }; c4Board.appendChild(cell); } }
-        for (let r = 0; r < 7; r++) { for (let c = 0; c < 7; c++) { const div = document.createElement('div'); if (r % 2 === 0 && c % 2 === 0) div.className = 'dab-dot'; else if (r % 2 === 0 && c % 2 !== 0) { div.className = 'dab-hline'; const hRow = r / 2; const hCol = Math.floor(c / 2); div.id = `h-${hRow}-${hCol}`; div.onclick = () => { if (currentGameType === 'Dots and Boxes') socket.emit('makeDABMove', { roomName: currentRoom, type: 'h', r: hRow, c: hCol }); }; } else if (r % 2 !== 0 && c % 2 === 0) { div.className = 'dab-vline'; const vRow = Math.floor(r / 2); const vCol = c / 2; div.id = `v-${vRow}-${vCol}`; div.onclick = () => { if (currentGameType === 'Dots and Boxes') socket.emit('makeDABMove', { roomName: currentRoom, type: 'v', r: vRow, c: vCol }); }; } else { div.className = 'dab-box'; div.id = `box-${Math.floor(r / 2)}-${Math.floor(c / 2)}`; } dabBoard.appendChild(div); } }
-        for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const myCell = document.createElement('div'); myCell.className = 'bs-cell'; myCell.id = `bs-my-${r}-${c}`; bsMyBoard.appendChild(myCell); const targetCell = document.createElement('div'); targetCell.className = 'bs-cell'; targetCell.id = `bs-target-${r}-${c}`; targetCell.onclick = () => { if (currentGameType === 'Battleship') socket.emit('makeBattleshipMove', { roomName: currentRoom, r, c }); }; bsTrackingBoard.appendChild(targetCell); } }
-        
-        // CHECKERS GRID
-        for (let r = 0; r < 8; r++) {
-            for (let c = 0; c < 8; c++) {
-                const cell = document.createElement('div');
-                cell.id = `chk-${r}-${c}`;
-                if ((r + c) % 2 === 0) cell.className = 'chk-cell chk-light';
-                else {
-                    cell.className = 'chk-cell chk-dark';
-                    cell.onclick = () => {
-                        if (currentGameType !== 'Checkers' || !lastChkGame || lastChkGame.turn !== mySymbol) return;
-                        if (chkSelected) {
-                            if (chkSelected.r === r && chkSelected.c === c) { chkSelected = null; updateChkUI(lastChkGame); return; } // Deselect
-                            socket.emit('makeCheckersMove', { roomName: currentRoom, fromR: chkSelected.r, fromC: chkSelected.c, toR: r, toC: c });
-                            chkSelected = null;
-                        } else {
-                            const p = lastChkGame.board[r][c];
-                            if ((mySymbol === 'Red' && (p === 1 || p === 3)) || (mySymbol === 'Black' && (p === 2 || p === 4))) {
-                                chkSelected = {r, c}; updateChkUI(lastChkGame);
-                            }
-                        }
-                    };
-                }
-                chkBoard.appendChild(cell);
-            }
-        }
-
-        socket.on('startGame', (gameState) => {
-            currentRoom = gameState.roomName; currentGameType = gameState.gameType; mySymbol = gameState.players[socket.id]; isPrivateGame = gameState.isPrivate; 
-            vsDisplay.innerText = `${myUsername} vs ${gameState.opponentNames[socket.id]}`;
-            if (currentGameType === 'Connect 4' || currentGameType === 'Dots and Boxes') roleDisplay.innerHTML = `You are playing as: <strong>${mySymbol === 'Red' ? '🔴 Red' : '🔵 Blue'}</strong>`;
-            else if (currentGameType === 'Checkers') roleDisplay.innerHTML = `You are playing as: <strong>${mySymbol === 'Red' ? '🔴 Red' : '⚫ Black'}</strong>`;
-            else if (currentGameType === 'Super Tic-Tac-Toe') roleDisplay.innerHTML = `You are playing as: <strong style="color: ${mySymbol === 'X' ? 'var(--primary)' : 'var(--secondary)'};">${mySymbol}</strong>`;
-            else if (currentGameType === 'Pong') roleDisplay.innerHTML = `You are the <strong>${mySymbol}</strong> paddle`;
-            else if (currentGameType === 'Battleship') roleDisplay.innerHTML = `You are Commander <strong>${mySymbol}</strong>`;
-
-            gameSection.classList.add('fade-out'); document.getElementById('private-lobby-modal').style.display = 'none';
-            setTimeout(() => {
-                gameSection.style.display = 'none'; gameSection.classList.remove('fade-out'); playSection.style.display = 'block'; playSection.classList.add('fade-in');
-                stttContainer.style.display = 'none'; c4Container.style.display = 'none'; pongContainer.style.display = 'none'; dabContainer.style.display = 'none'; bsContainer.style.display = 'none'; chkContainer.style.display = 'none';
-
-                if (currentGameType === 'Super Tic-Tac-Toe') { stttContainer.style.display = 'block'; updateSTTTUI(gameState); } 
-                else if (currentGameType === 'Connect 4') { c4Container.style.display = 'block'; updateC4UI(gameState); } 
-                else if (currentGameType === 'Dots and Boxes') { dabContainer.style.display = 'block'; updateDABUI(gameState); }
-                else if (currentGameType === 'Checkers') { chkContainer.style.display = 'block'; chkSelected = null; updateChkUI(gameState); }
-                else if (currentGameType === 'Pong') { pongContainer.style.display = 'block'; turnDisplay.innerText = "Hold UP/DOWN arrows (or W/S) to glide!"; }
-                else if (currentGameType === 'Battleship') { bsContainer.style.display = 'block'; document.getElementById('bs-setup-menu').style.display = 'block'; document.getElementById('bs-randomize-btn').click(); turnDisplay.innerText = "Arrange your fleet!"; turnDisplay.style.color = "var(--text)"; }
-            }, 500);
-        });
-
-        function randomizeBattleship() { localBattleshipBoard = Array(10).fill(null).map(() => Array(10).fill(0)); const ships = [5, 4, 3, 3, 2]; for (let shipLen of ships) { let placed = false; while (!placed) { const isHoriz = Math.random() > 0.5; const r = Math.floor(Math.random() * (isHoriz ? 10 : 10 - shipLen)); const c = Math.floor(Math.random() * (isHoriz ? 10 - shipLen : 10)); let canPlace = true; for (let i = 0; i < shipLen; i++) { if (isHoriz && localBattleshipBoard[r][c + i] !== 0) canPlace = false; if (!isHoriz && localBattleshipBoard[r + i][c] !== 0) canPlace = false; } if (canPlace) { for (let i = 0; i < shipLen; i++) { if (isHoriz) localBattleshipBoard[r][c + i] = 1; else localBattleshipBoard[r + i][c] = 1; } placed = true; } } } drawLocalBattleship(); }
-        function drawLocalBattleship() { for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const cell = document.getElementById(`bs-my-${r}-${c}`); cell.className = localBattleshipBoard[r][c] === 1 ? 'bs-cell bs-ship' : 'bs-cell'; } } }
-        document.getElementById('bs-randomize-btn').addEventListener('click', randomizeBattleship); document.getElementById('bs-ready-btn').addEventListener('click', () => { document.getElementById('bs-setup-menu').style.display = 'none'; socket.emit('submitBattleshipBoard', { roomName: currentRoom, board: localBattleshipBoard }); });
-        socket.on('battleshipWaiting', () => { turnDisplay.innerText = "Waiting for opponent to ready up..."; turnDisplay.style.color = "var(--secondary)"; }); socket.on('battleshipStartPlaying', (data) => { turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn to Fire!" : "⏳ Incoming Fire..."; turnDisplay.style.color = data.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; });
-        socket.on('updateBattleshipBoard', (data) => { turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn to Fire!" : "⏳ Incoming Fire..."; turnDisplay.style.color = data.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const myCell = document.getElementById(`bs-my-${r}-${c}`); if (data.myBoard[r][c] === 1) myCell.className = 'bs-cell bs-ship'; else if (data.myBoard[r][c] === 2) { myCell.className = 'bs-cell bs-miss'; myCell.innerText = '•'; } else if (data.myBoard[r][c] === 3) { myCell.className = 'bs-cell bs-hit'; myCell.innerText = 'X'; } const targetCell = document.getElementById(`bs-target-${r}-${c}`); if (data.trackingBoard[r][c] === 0) { targetCell.className = 'bs-cell'; targetCell.innerText = ''; } else if (data.trackingBoard[r][c] === 2) { targetCell.className = 'bs-cell bs-miss'; targetCell.innerText = '•'; } else if (data.trackingBoard[r][c] === 3) { targetCell.className = 'bs-cell bs-hit'; targetCell.innerText = 'X'; } } } });
-
-        socket.on('updateBoard', (game) => { turnDisplay.innerText = game.turn === mySymbol ? "🎯 Your Turn!" : "⏳ Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; for (let i = 0; i < 9; i++) { const macroDiv = document.getElementById(`macro-${i}`); if (game.macroBoard[i]) { const winnerClass = game.macroBoard[i] === 'X' ? 'winner-x' : 'winner-o'; if (!macroDiv.innerHTML.includes('macro-winner')) { macroDiv.innerHTML = `<div class="macro-winner ${winnerClass}">${game.macroBoard[i] === 'Tie' ? '-' : game.macroBoard[i]}</div>`; macroDiv.className = 'macro-cell disabled'; } continue; } macroDiv.className = (!game.winner && game.turn === mySymbol && (game.nextBoard === -1 || game.nextBoard === i)) ? 'macro-cell highlight' : 'macro-cell disabled'; for (let j = 0; j < 9; j++) { const microDiv = document.getElementById(`micro-${i}-${j}`); if (microDiv) { const cellValue = game.board[i][j]; if (cellValue && microDiv.innerHTML === '') microDiv.innerHTML = `<span class="${cellValue === 'X' ? 'mark-x' : 'mark-o'}">${cellValue}</span>`; } } } });
-        socket.on('updateC4Board', (game) => { turnDisplay.innerText = game.turn === mySymbol ? "🔴 Your Turn!" : "🟡 Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? (mySymbol==='Red'?'var(--primary)':'var(--accent)') : (mySymbol==='Red'?'var(--accent)':'var(--primary)'); for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = document.getElementById(`c4-${r}-${c}`); if (game.board[r][c] === 'Red' && !cell.classList.contains('c4-red')) cell.className = 'c4-cell c4-red'; else if (game.board[r][c] === 'Yellow' && !cell.classList.contains('c4-yellow')) cell.className = 'c4-cell c4-yellow'; } } });
-        socket.on('updateDABBoard', (game) => { turnDisplay.innerText = game.turn === mySymbol ? (mySymbol==='Red'?'🔴 Your Turn!':'🔵 Your Turn!') : "⏳ Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? (mySymbol==='Red'?'var(--primary)':'var(--secondary)') : (mySymbol==='Red'?'var(--secondary)':'var(--primary)'); document.getElementById('dab-score-red').innerText = game.scores['Red']; document.getElementById('dab-score-blue').innerText = game.scores['Blue']; for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const hLine = document.getElementById(`h-${r}-${c}`); if (game.hLines[r][c] === 'Red') hLine.className = 'dab-hline dab-line-red'; else if (game.hLines[r][c] === 'Blue') hLine.className = 'dab-hline dab-line-blue'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const vLine = document.getElementById(`v-${r}-${c}`); if (game.vLines[r][c] === 'Red') vLine.className = 'dab-vline dab-line-red'; else if (game.vLines[r][c] === 'Blue') vLine.className = 'dab-vline dab-line-blue'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const box = document.getElementById(`box-${r}-${c}`); if (game.boxes[r][c] === 'Red') { box.className = 'dab-box dab-box-red'; box.innerText = 'R'; } else if (game.boxes[r][c] === 'Blue') { box.className = 'dab-box dab-box-blue'; box.innerText = 'B'; } } } });
-
-        // CHECKERS UI UPDATE
-        socket.on('updateCheckersBoard', updateChkUI);
-        function updateChkUI(game) {
-            lastChkGame = game;
-            turnDisplay.innerText = game.turn === mySymbol ? "🎯 Your Turn!" : "⏳ Opponent's Turn...";
-            turnDisplay.style.color = game.turn === mySymbol ? "var(--primary)" : "var(--secondary)";
-            
-            for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                    if ((r + c) % 2 === 0) continue; // Light squares are empty
-                    const cell = document.getElementById(`chk-${r}-${c}`);
-                    cell.innerHTML = ''; // Clear cell
-                    
-                    const p = game.board[r][c];
-                    if (p !== 0) {
-                        const pieceDiv = document.createElement('div');
-                        pieceDiv.className = `chk-piece ${p === 1 || p === 3 ? 'chk-red' : 'chk-black'}`;
-                        if (chkSelected && chkSelected.r === r && chkSelected.c === c) pieceDiv.classList.add('chk-selected');
-                        if (p === 3 || p === 4) pieceDiv.innerText = '👑'; // It's a King!
-                        cell.appendChild(pieceDiv);
-                    }
-                }
-            }
-        }
-
-        const keys = { up: false, down: false }; document.addEventListener('keydown', (e) => { if (currentGameType !== 'Pong') return; if (['ArrowUp', 'ArrowDown', 'w', 's', ' '].includes(e.key)) e.preventDefault(); let changed = false; if ((e.key === 'ArrowUp' || e.key === 'w') && !keys.up) { keys.up = true; changed = true; } if ((e.key === 'ArrowDown' || e.key === 's') && !keys.down) { keys.down = true; changed = true; } if (changed) sendPaddleState(); }); document.addEventListener('keyup', (e) => { if (currentGameType !== 'Pong') return; let changed = false; if (e.key === 'ArrowUp' || e.key === 'w') { keys.up = false; changed = true; } if (e.key === 'ArrowDown' || e.key === 's') { keys.down = false; changed = true; } if (changed) sendPaddleState(); }); function sendPaddleState() { let dir = 0; if (keys.up) dir -= 1; if (keys.down) dir += 1; socket.emit('paddleState', { roomName: currentRoom, direction: dir }); }
-        socket.on('pongUpdate', (state) => { document.getElementById('pong-paddle1').style.top = state.p1y + '%'; document.getElementById('pong-paddle2').style.top = state.p2y + '%'; document.getElementById('pong-ball').style.left = state.bx + '%'; document.getElementById('pong-ball').style.top = state.by + '%'; document.getElementById('pong-strike1').innerText = state.strikes1; document.getElementById('pong-strike2').innerText = state.strikes2; const cd = document.getElementById('pong-countdown'); if (state.countdown) { cd.innerText = state.countdown; cd.style.display = 'block'; } else { cd.style.display = 'none'; } });
-
-        socket.on('gameOverScreen', (data) => { currentGameType = null; keys.up = false; keys.down = false; const title = document.getElementById('go-title'); const msg = document.getElementById('go-message'); const points = document.getElementById('go-points'); const modal = document.getElementById('game-over-modal'); if (data.isTie) { title.innerText = "It's a Tie! 🤝"; title.className = "win-text"; msg.innerText = "Good game!"; points.innerText = "+0 Points"; points.className = ""; } else if (data.winnerId === socket.id) { title.innerText = "Victory! 🏆"; title.className = "win-text"; msg.innerText = data.isQuit ? "Your opponent quit out of fear!" : "You crushed them!"; points.innerText = "+50 Points"; points.className = "win-text"; playerRankDisplay.innerText = data.newWinnerRank; } else { title.innerText = "Defeat! 💀"; title.className = "lose-text"; msg.innerText = data.isQuit ? "You quit the game!" : "Better luck next time."; points.innerText = "-50 Points"; points.className = "lose-text"; playerRankDisplay.innerText = data.newLoserRank; } modal.style.display = 'flex'; });
-
-        document.getElementById('returnLobbyBtn').addEventListener('click', () => {
-            document.getElementById('game-over-modal').style.display = 'none'; playSection.style.display = 'none'; playSection.classList.remove('fade-in');
-            document.getElementById('pong-strike1').innerText = "0"; document.getElementById('pong-strike2').innerText = "0";
-            stttBoard.innerHTML = ''; for (let i = 0; i < 9; i++) { const macroCell = document.createElement('div'); macroCell.className = 'macro-cell'; macroCell.id = `macro-${i}`; for (let j = 0; j < 9; j++) { const microCell = document.createElement('div'); microCell.className = 'micro-cell'; microCell.id = `micro-${i}-${j}`; microCell.onclick = () => { if (currentGameType === 'Super Tic-Tac-Toe') socket.emit('makeMove', { roomName: currentRoom, macroIndex: i, microIndex: j }); }; macroCell.appendChild(microCell); } stttBoard.appendChild(macroCell); }
-            for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { document.getElementById(`c4-${r}-${c}`).className = 'c4-cell'; } }
-            for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const h = document.getElementById(`h-${r}-${c}`); if(h) h.className = 'dab-hline'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const v = document.getElementById(`v-${r}-${c}`); if(v) v.className = 'dab-vline'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const b = document.getElementById(`box-${r}-${c}`); if(b) { b.className = 'dab-box'; b.innerText = ''; } } } document.getElementById('dab-score-red').innerText = '0'; document.getElementById('dab-score-blue').innerText = '0';
-            for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const m = document.getElementById(`bs-my-${r}-${c}`); if(m) { m.className = 'bs-cell'; m.innerText = ''; } const t = document.getElementById(`bs-target-${r}-${c}`); if(t) { t.className = 'bs-cell'; t.innerText = ''; } } }
-            
-            if (isPrivateGame) { document.getElementById('private-lobby-modal').style.display = 'flex'; } else { wheelContainer.style.display = 'none'; statusDiv.innerText = "Ready to play?"; findMatchBtn.disabled = false; gameSection.style.display = 'block'; gameSection.classList.add('fade-in'); }
-        });
-    </script>
+    <script src="/app.js"></script>
 </body>
 </html>
