@@ -12,19 +12,16 @@ const dabContainer = document.getElementById('dab-container'); const dabBoard = 
 const bsContainer = document.getElementById('bs-container'); const bsMyBoard = document.getElementById('bs-my-board'); const bsTrackingBoard = document.getElementById('bs-tracking-board');
 const chkContainer = document.getElementById('chk-container'); const chkBoard = document.getElementById('chk-board');
 
-const c8Container = document.getElementById('c8-container'); 
-const c8OppHand = document.getElementById('c8-opp-hand'); 
-const c8MyHand = document.getElementById('c8-my-hand'); 
-const c8Discard = document.getElementById('c8-discard'); 
-const c8Deck = document.getElementById('c8-deck'); 
-const c8ActiveSuit = document.getElementById('c8-active-suit');
+const c8Container = document.getElementById('c8-container'); const c8OppHand = document.getElementById('c8-opp-hand'); const c8MyHand = document.getElementById('c8-my-hand'); const c8Discard = document.getElementById('c8-discard'); const c8Deck = document.getElementById('c8-deck'); const c8ActiveSuit = document.getElementById('c8-active-suit');
+
+const rmContainer = document.getElementById('rm-container'); const rmOppHand = document.getElementById('rm-opp-hand'); const rmMyHand = document.getElementById('rm-my-hand'); const rmDiscardPile = document.getElementById('rm-discard-pile'); const rmDeck = document.getElementById('rm-deck'); const rmMeldArea = document.getElementById('rm-meld-area');
 
 let currentRoom = null, mySymbol = null, currentGameType = null, myUsername = null, myUserObj = null; 
 let myPrivateCode = null; let isLobbyHost = false; let isPrivateGame = false;
 let localBattleshipBoard = Array(10).fill(null).map(() => Array(10).fill(0));
 let chkSelected = null; let lastChkGame = null;
-let pendingC8CardIndex = null;
-let lastTopCardStr = ""; // Tracks the top card to run the drop animation!
+let pendingC8CardIndex = null; let lastTopCardStr = ""; 
+let rummySelectedIndices = []; let rummySelectedMeldId = null;
 
 socket.on('onlineCount', (count) => { document.getElementById('online-counter').innerText = `🟢 Players Online: ${count}`; });
 window.onload = () => { const savedUser = localStorage.getItem('boarders_account'); if (savedUser) { const { username, password } = JSON.parse(savedUser); usernameInput.value = username; passwordInput.value = password; handleAuth('login'); } };
@@ -59,16 +56,17 @@ document.getElementById('viewLeaderboardBtn').addEventListener('click', async ()
     document.getElementById('leaderboard-modal').style.display = 'flex'; 
     const res = await fetch('/leaderboard'); const data = await res.json(); 
     document.getElementById('leaderboard-content').innerHTML = data.map((u, i) => `
-        <div class="leaderboard-item">
-            <div class="lb-left">
-                <span style="font-weight: 900; margin-right: 15px; color: var(--secondary);">#${i+1}</span>
-                <img src="${u.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username}`}">
-                <span>${u.username}</span>
-            </div>
-            <span style="color:var(--primary);">${u.rank} ⭐</span>
-        </div>`).join(''); 
+        <div class="leaderboard-item"><div class="lb-left"><span style="font-weight: 900; margin-right: 15px; color: var(--secondary);">#${i+1}</span><img src="${u.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username}`}"><span>${u.username}</span></div><span style="color:var(--primary);">${u.rank} ⭐</span></div>`).join(''); 
 }); 
 document.getElementById('closeLeaderboardBtn').addEventListener('click', () => { document.getElementById('leaderboard-modal').style.display = 'none'; });
+
+document.getElementById('viewStatsBtn').addEventListener('click', () => { if (window.renderStatsUI) window.renderStatsUI(); document.getElementById('stats-modal').style.display = 'flex'; });
+document.getElementById('closeStatsBtn').addEventListener('click', () => { document.getElementById('stats-modal').style.display = 'none'; });
+
+// NEW: How To Play Listeners
+document.getElementById('howToPlayBtn').addEventListener('click', () => { if (window.renderHowToPlay) window.renderHowToPlay(); document.getElementById('howtoplay-modal').style.display = 'flex'; });
+document.getElementById('closeHowToPlayBtn').addEventListener('click', () => { document.getElementById('howtoplay-modal').style.display = 'none'; });
+
 
 findMatchBtn.addEventListener('click', () => { socket.emit('joinQueue', myUsername); statusDiv.innerText = 'Searching for a match... ⏳'; findMatchBtn.disabled = true; }); 
 document.getElementById('quitBtn').addEventListener('click', () => { socket.emit('quitGame'); });
@@ -76,7 +74,7 @@ document.getElementById('quitBtn').addEventListener('click', () => { socket.emit
 socket.on('matchFound', (data) => { 
     document.getElementById('private-lobby-modal').style.display = 'none'; statusDiv.innerText = `Match found! 🎯`; gameSection.classList.add('fade-out'); 
     const rScreen = document.getElementById('roulette-screen'); const rStrip = document.getElementById('roulette-strip');
-    const gamesList = ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Checkers', 'Crazy Eights'];
+    const gamesList = ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Checkers', 'Crazy Eights', 'Rummy'];
     let stripHTML = ''; for(let i=0; i<30; i++) { stripHTML += `<div class="roulette-item">${gamesList[Math.floor(Math.random() * gamesList.length)]}</div>`; }
     stripHTML += `<div class="roulette-item" style="color: var(--primary);">${data.game}</div>`;
     rStrip.innerHTML = stripHTML; rScreen.style.display = 'flex';
@@ -111,12 +109,12 @@ socket.on('startGame', (gameState) => {
     else if (currentGameType === 'Checkers') roleDisplay.innerHTML = `You are playing as: <strong>${mySymbol === 'Red' ? '🔴 Red' : '⚫ Black'}</strong>`;
     else if (currentGameType === 'Super Tic-Tac-Toe') roleDisplay.innerHTML = `You are playing as: <strong style="color: ${mySymbol === 'X' ? 'var(--primary)' : 'var(--secondary)'};">${mySymbol}</strong>`;
     else if (currentGameType === 'Battleship') roleDisplay.innerHTML = `You are Commander <strong>${mySymbol}</strong>`;
-    else if (currentGameType === 'Crazy Eights') roleDisplay.innerHTML = `You are <strong>${mySymbol}</strong>`;
+    else if (currentGameType === 'Crazy Eights' || currentGameType === 'Rummy') roleDisplay.innerHTML = `You are <strong>${mySymbol}</strong>`;
 
     document.getElementById('roulette-screen').style.display = 'none'; 
     gameSection.style.display = 'none'; gameSection.classList.remove('fade-out'); playSection.style.display = 'block'; playSection.classList.add('fade-in');
     
-    stttContainer.style.display = 'none'; c4Container.style.display = 'none'; dabContainer.style.display = 'none'; bsContainer.style.display = 'none'; chkContainer.style.display = 'none'; c8Container.style.display = 'none';
+    stttContainer.style.display = 'none'; c4Container.style.display = 'none'; dabContainer.style.display = 'none'; bsContainer.style.display = 'none'; chkContainer.style.display = 'none'; c8Container.style.display = 'none'; rmContainer.style.display = 'none';
 
     if (currentGameType === 'Super Tic-Tac-Toe') { stttContainer.style.display = 'block'; updateSTTTUI(gameState); } 
     else if (currentGameType === 'Connect 4') { c4Container.style.display = 'block'; updateC4UI(gameState); } 
@@ -124,6 +122,7 @@ socket.on('startGame', (gameState) => {
     else if (currentGameType === 'Checkers') { chkContainer.style.display = 'block'; chkSelected = null; updateChkUI(gameState); }
     else if (currentGameType === 'Battleship') { bsContainer.style.display = 'block'; document.getElementById('bs-setup-menu').style.display = 'block'; document.getElementById('bs-randomize-btn').click(); turnDisplay.innerText = "Arrange your fleet!"; turnDisplay.style.color = "var(--text)"; }
     else if (currentGameType === 'Crazy Eights') { c8Container.style.display = 'flex'; turnDisplay.innerText = "Dealing cards..."; }
+    else if (currentGameType === 'Rummy') { rmContainer.style.display = 'flex'; turnDisplay.innerText = "Dealing cards..."; }
 });
 
 function randomizeBattleship() { localBattleshipBoard = Array(10).fill(null).map(() => Array(10).fill(0)); const ships = [5, 4, 3, 3, 2]; for (let shipLen of ships) { let placed = false; while (!placed) { const isHoriz = Math.random() > 0.5; const r = Math.floor(Math.random() * (isHoriz ? 10 : 10 - shipLen)); const c = Math.floor(Math.random() * (isHoriz ? 10 - shipLen : 10)); let canPlace = true; for (let i = 0; i < shipLen; i++) { if (isHoriz && localBattleshipBoard[r][c + i] !== 0) canPlace = false; if (!isHoriz && localBattleshipBoard[r + i][c] !== 0) canPlace = false; } if (canPlace) { for (let i = 0; i < shipLen; i++) { if (isHoriz) localBattleshipBoard[r][c + i] = 1; else localBattleshipBoard[r + i][c] = 1; } placed = true; } } } drawLocalBattleship(); }
@@ -132,19 +131,7 @@ document.getElementById('bs-randomize-btn').addEventListener('click', randomizeB
 socket.on('battleshipWaiting', () => { turnDisplay.innerText = "Waiting for opponent to ready up..."; turnDisplay.style.color = "var(--secondary)"; }); socket.on('battleshipStartPlaying', (data) => { turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn to Fire!" : "⏳ Incoming Fire..."; turnDisplay.style.color = data.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; });
 socket.on('updateBattleshipBoard', (data) => { turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn to Fire!" : "⏳ Incoming Fire..."; turnDisplay.style.color = data.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const myCell = document.getElementById(`bs-my-${r}-${c}`); if (data.myBoard[r][c] === 1) myCell.className = 'bs-cell bs-ship'; else if (data.myBoard[r][c] === 2) { myCell.className = 'bs-cell bs-miss'; myCell.innerText = '•'; } else if (data.myBoard[r][c] === 3) { myCell.className = 'bs-cell bs-hit'; myCell.innerText = 'X'; } const targetCell = document.getElementById(`bs-target-${r}-${c}`); if (data.trackingBoard[r][c] === 0) { targetCell.className = 'bs-cell'; targetCell.innerText = ''; } else if (data.trackingBoard[r][c] === 2) { targetCell.className = 'bs-cell bs-miss'; targetCell.innerText = '•'; } else if (data.trackingBoard[r][c] === 3) { targetCell.className = 'bs-cell bs-hit'; targetCell.innerText = 'X'; } } } });
 
-socket.on('revealBattleship', (secretBoards) => {
-    const opponentId = Object.keys(secretBoards).find(id => id !== socket.id);
-    const opponentBoard = secretBoards[opponentId];
-    for (let r = 0; r < 10; r++) {
-        for (let c = 0; c < 10; c++) {
-            const targetCell = document.getElementById(`bs-target-${r}-${c}`);
-            if (opponentBoard[r][c] === 1 && !targetCell.classList.contains('bs-hit')) {
-                targetCell.className = 'bs-cell bs-ship-revealed';
-                targetCell.innerText = '🚢';
-            }
-        }
-    }
-});
+socket.on('revealBattleship', (secretBoards) => { const opponentId = Object.keys(secretBoards).find(id => id !== socket.id); const opponentBoard = secretBoards[opponentId]; for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const targetCell = document.getElementById(`bs-target-${r}-${c}`); if (opponentBoard[r][c] === 1 && !targetCell.classList.contains('bs-hit')) { targetCell.className = 'bs-cell bs-ship-revealed'; targetCell.innerText = '🚢'; } } } });
 
 socket.on('updateBoard', updateSTTTUI);
 function updateSTTTUI(game) { 
@@ -158,16 +145,9 @@ function updateSTTTUI(game) {
             if (!macroDiv.innerHTML.includes('macro-winner')) { macroDiv.innerHTML = `<div class="macro-winner ${winnerClass}">${game.macroBoard[i] === 'Tie' ? '-' : game.macroBoard[i]}</div>`; macroDiv.className = 'macro-cell disabled'; } 
             continue; 
         } 
-        
-        if (!game.winner && (game.nextBoard === -1 || game.nextBoard === i)) {
-            macroDiv.classList.add(game.turn === mySymbol ? 'highlight-active' : 'highlight-waiting');
-        } else {
-            macroDiv.classList.add('disabled');
-        }
-
+        if (!game.winner && (game.nextBoard === -1 || game.nextBoard === i)) macroDiv.classList.add(game.turn === mySymbol ? 'highlight-active' : 'highlight-waiting'); else macroDiv.classList.add('disabled');
         for (let j = 0; j < 9; j++) { const microDiv = document.getElementById(`micro-${i}-${j}`); if (microDiv) { const cellValue = game.board[i][j]; if (cellValue && microDiv.innerHTML === '') microDiv.innerHTML = `<span class="${cellValue === 'X' ? 'mark-x' : 'mark-o'}">${cellValue}</span>`; } } 
     } 
-
     if (game.winLine) { game.winLine.forEach(i => { document.getElementById(`macro-${i}`).classList.add('sttt-win-pulse'); }); }
 }
 
@@ -176,89 +156,85 @@ socket.on('updateDABBoard', (game) => { turnDisplay.innerText = game.turn === my
 socket.on('updateCheckersBoard', updateChkUI); function updateChkUI(game) { lastChkGame = game; turnDisplay.innerText = game.turn === mySymbol ? (game.multiJumping ? "🔄 Double Jump Available!" : "🎯 Your Turn!") : "⏳ Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; if (game.multiJumping && game.turn === mySymbol) { chkSelected = { r: game.multiJumping.r, c: game.multiJumping.c }; } else if (game.turn !== mySymbol) { chkSelected = null; } for (let r = 0; r < 8; r++) { for (let c = 0; c < 8; c++) { if ((r + c) % 2 === 0) continue; const cell = document.getElementById(`chk-${r}-${c}`); cell.innerHTML = ''; const p = game.board[r][c]; if (p !== 0) { const pieceDiv = document.createElement('div'); pieceDiv.className = `chk-piece ${p === 1 || p === 3 ? 'chk-red' : 'chk-black'}`; if (chkSelected && chkSelected.r === r && chkSelected.c === c) pieceDiv.classList.add('chk-selected'); if (p === 3 || p === 4) pieceDiv.innerText = '👑'; cell.appendChild(pieceDiv); } } } }
 
 c8Deck.onclick = () => { if (currentGameType === 'Crazy Eights') socket.emit('makeC8Draw', { roomName: currentRoom }); };
-window.selectC8Suit = function(suit) {
-    document.getElementById('c8-suit-modal').style.display = 'none';
-    socket.emit('makeC8Play', { roomName: currentRoom, cardIndex: pendingC8CardIndex, declaredSuit: suit });
-    pendingC8CardIndex = null;
-}
+window.selectC8Suit = function(suit) { document.getElementById('c8-suit-modal').style.display = 'none'; socket.emit('makeC8Play', { roomName: currentRoom, cardIndex: pendingC8CardIndex, declaredSuit: suit }); pendingC8CardIndex = null; }
 
-// FIXED: Animated Card Drops
 socket.on('updateCrazyEights', (data) => {
-    turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn!" : "⏳ Opponent's Turn...";
-    turnDisplay.style.color = data.turn === mySymbol ? "var(--primary)" : "var(--secondary)";
-
+    turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn!" : "⏳ Opponent's Turn..."; turnDisplay.style.color = data.turn === mySymbol ? "var(--primary)" : "var(--secondary)";
     document.getElementById('c8-opp-count').innerText = data.opponentHandCount;
-    
-    c8OppHand.innerHTML = '';
-    for(let i=0; i<data.opponentHandCount; i++) {
-        c8OppHand.innerHTML += `<div class="c8-card c8-hidden"></div>`;
-    }
-
+    c8OppHand.innerHTML = ''; for(let i=0; i<data.opponentHandCount; i++) c8OppHand.innerHTML += `<div class="c8-card c8-hidden"></div>`;
     c8MyHand.innerHTML = '';
     data.myHand.forEach((card, index) => {
         let colorClass = (card.suit === '♥' || card.suit === '♦') ? 'c8-red' : 'c8-black';
-        let cardDiv = document.createElement('div');
-        cardDiv.className = `c8-card ${colorClass}`;
-        cardDiv.innerHTML = `<div>${card.val}</div><div>${card.suit}</div>`;
+        let cardDiv = document.createElement('div'); cardDiv.className = `c8-card ${colorClass}`; cardDiv.innerHTML = `<div>${card.val}</div><div>${card.suit}</div>`;
         cardDiv.onclick = () => {
             if (data.turn !== mySymbol) return;
-            if (card.val === '8') {
-                pendingC8CardIndex = index;
-                document.getElementById('c8-suit-modal').style.display = 'flex';
-            } else {
-                socket.emit('makeC8Play', { roomName: currentRoom, cardIndex: index, declaredSuit: null });
-            }
-        };
-        c8MyHand.appendChild(cardDiv);
+            if (card.val === '8') { pendingC8CardIndex = index; document.getElementById('c8-suit-modal').style.display = 'flex'; } else { socket.emit('makeC8Play', { roomName: currentRoom, cardIndex: index, declaredSuit: null }); }
+        }; c8MyHand.appendChild(cardDiv);
     });
 
     if (data.topCard) {
-        let colorClass = (data.topCard.suit === '♥' || data.topCard.suit === '♦') ? 'c8-red' : 'c8-black';
-        let cardStr = `${data.topCard.val}${data.topCard.suit}`;
-        
+        let colorClass = (data.topCard.suit === '♥' || data.topCard.suit === '♦') ? 'c8-red' : 'c8-black'; let cardStr = `${data.topCard.val}${data.topCard.suit}`;
         c8Discard.innerHTML = `<div>${data.topCard.val}</div><div>${data.topCard.suit}</div>`;
-        
-        if (lastTopCardStr !== cardStr) {
-            c8Discard.className = `c8-card ${colorClass}`;
-            void c8Discard.offsetWidth; 
-            c8Discard.classList.add('drop-anim');
-            lastTopCardStr = cardStr;
-        } else {
-            c8Discard.className = `c8-card ${colorClass} drop-anim`;
-        }
+        if (lastTopCardStr !== cardStr) { c8Discard.className = `c8-card ${colorClass}`; void c8Discard.offsetWidth; c8Discard.classList.add('drop-anim'); lastTopCardStr = cardStr; } else { c8Discard.className = `c8-card ${colorClass} drop-anim`; }
     }
+    if (data.activeSuit) { c8ActiveSuit.innerText = data.activeSuit; c8ActiveSuit.className = (data.activeSuit === '♥' || data.activeSuit === '♦') ? 'c8-red' : 'c8-black'; } else { c8ActiveSuit.innerText = ''; }
+});
 
-    if (data.activeSuit) {
-        c8ActiveSuit.innerText = data.activeSuit;
-        c8ActiveSuit.className = (data.activeSuit === '♥' || data.activeSuit === '♦') ? 'c8-red' : 'c8-black';
-    } else {
-        c8ActiveSuit.innerText = '';
-    }
+rmDeck.onclick = () => { if (currentGameType === 'Rummy') socket.emit('makeRummyDraw', { roomName: currentRoom, source: 'deck' }); };
+document.getElementById('rm-meld-btn').onclick = () => { if (currentGameType === 'Rummy' && rummySelectedIndices.length >= 3) { socket.emit('makeRummyMeld', { roomName: currentRoom, cardIndices: rummySelectedIndices }); rummySelectedIndices = []; } };
+document.getElementById('rm-layoff-btn').onclick = () => { if (currentGameType === 'Rummy' && rummySelectedIndices.length === 1 && rummySelectedMeldId) { socket.emit('makeRummyLayOff', { roomName: currentRoom, cardIndex: rummySelectedIndices[0], meldId: rummySelectedMeldId }); rummySelectedIndices = []; rummySelectedMeldId = null; } };
+document.getElementById('rm-discard-btn').onclick = () => { if (currentGameType === 'Rummy' && rummySelectedIndices.length === 1) { socket.emit('makeRummyDiscard', { roomName: currentRoom, cardIndex: rummySelectedIndices[0] }); rummySelectedIndices = []; rummySelectedMeldId = null; } };
+
+socket.on('updateRummy', (data) => {
+    if (data.turn === mySymbol) { turnDisplay.innerText = data.phase === 'draw' ? "📥 Your Turn - Draw a Card" : "🎯 Your Turn - Meld or Discard"; turnDisplay.style.color = data.phase === 'draw' ? "var(--accent)" : "var(--primary)"; } else { turnDisplay.innerText = "⏳ Opponent's Turn..."; turnDisplay.style.color = "var(--secondary)"; }
+
+    const isMyPlayPhase = data.turn === mySymbol && data.phase === 'play';
+    document.getElementById('rm-meld-btn').disabled = !isMyPlayPhase; document.getElementById('rm-layoff-btn').disabled = !isMyPlayPhase; document.getElementById('rm-discard-btn').disabled = !isMyPlayPhase;
+
+    document.getElementById('rm-opp-count').innerText = data.opponentHandCount;
+    rmOppHand.innerHTML = ''; for(let i=0; i<data.opponentHandCount; i++) rmOppHand.innerHTML += `<div class="rm-card c8-hidden"></div>`;
+
+    rmMyHand.innerHTML = '';
+    data.myHand.forEach((card, index) => {
+        let colorClass = (card.suit === '♥' || card.suit === '♦') ? 'c8-red' : 'c8-black';
+        let cardDiv = document.createElement('div'); cardDiv.className = `rm-card ${colorClass} ${rummySelectedIndices.includes(index) ? 'selected' : ''}`; cardDiv.innerHTML = `<div>${card.val}</div><div>${card.suit}</div>`;
+        cardDiv.onclick = () => {
+            if (!isMyPlayPhase) return;
+            if (rummySelectedIndices.includes(index)) { rummySelectedIndices = rummySelectedIndices.filter(i => i !== index); cardDiv.classList.remove('selected'); } else { rummySelectedIndices.push(index); cardDiv.classList.add('selected'); }
+        }; rmMyHand.appendChild(cardDiv);
+    });
+
+    rmDiscardPile.innerHTML = '';
+    data.discardPile.forEach((card, index) => {
+        let colorClass = (card.suit === '♥' || card.suit === '♦') ? 'c8-red' : 'c8-black';
+        let cardDiv = document.createElement('div'); cardDiv.className = `rm-card rm-discard-card ${colorClass}`; cardDiv.style.left = `${index * 25}px`; cardDiv.innerHTML = `<div>${card.val}</div><div>${card.suit}</div>`;
+        cardDiv.onclick = () => { if (data.turn === mySymbol && data.phase === 'draw') socket.emit('makeRummyDraw', { roomName: currentRoom, source: 'discard', index: index }); }; rmDiscardPile.appendChild(cardDiv);
+    });
+
+    rmMeldArea.innerHTML = '';
+    data.melds.forEach(meld => {
+        let meldDiv = document.createElement('div'); meldDiv.className = `rm-meld ${rummySelectedMeldId === meld.id ? 'selected' : ''}`;
+        meld.cards.forEach(card => { let colorClass = (card.suit === '♥' || card.suit === '♦') ? 'c8-red' : 'c8-black'; meldDiv.innerHTML += `<div class="rm-card ${colorClass}"><div>${card.val}</div><div>${card.suit}</div></div>`; });
+        meldDiv.onclick = () => { if (!isMyPlayPhase) return; rummySelectedMeldId = meld.id; document.querySelectorAll('.rm-meld').forEach(m => m.classList.remove('selected')); meldDiv.classList.add('selected'); }; rmMeldArea.appendChild(meldDiv);
+    });
 });
 
 document.addEventListener('keydown', (e) => { 
-    if (e.key === 'Escape') { document.getElementById('leaderboard-modal').style.display = 'none'; document.getElementById('private-menu-modal').style.display = 'none'; document.getElementById('host-modal').style.display = 'none'; document.getElementById('join-modal').style.display = 'none'; document.getElementById('account-modal').style.display = 'none'; document.getElementById('returnToResultsBtn').click(); }
+    if (e.key === 'Escape') { document.getElementById('howtoplay-modal').style.display = 'none'; document.getElementById('stats-modal').style.display = 'none'; document.getElementById('leaderboard-modal').style.display = 'none'; document.getElementById('private-menu-modal').style.display = 'none'; document.getElementById('host-modal').style.display = 'none'; document.getElementById('join-modal').style.display = 'none'; document.getElementById('account-modal').style.display = 'none'; document.getElementById('returnToResultsBtn').click(); }
     if (e.key === 'Enter') { const active = document.activeElement; if (active === document.getElementById('chatInput')) document.getElementById('sendChatBtn').click(); else if (active === document.getElementById('hostCodeInput')) document.getElementById('confirmHostBtn').click(); else if (active === document.getElementById('joinCodeInput')) document.getElementById('confirmJoinBtn').click(); else if (active === document.getElementById('usernameInput') || active === document.getElementById('passwordInput')) document.getElementById('loginBtn').click(); }
 }); 
 
 socket.on('gameOverScreen', (data) => { 
-    currentGameType = null; 
-    const title = document.getElementById('go-title'); const msg = document.getElementById('go-message'); const points = document.getElementById('go-points'); const modal = document.getElementById('game-over-modal'); 
-    const playersContainer = document.getElementById('go-players-container'); 
-    
-    const searchBtn = document.getElementById('rematchSearchBtn');
-    if (!isPrivateGame) { searchBtn.style.display = 'inline-block'; } else { searchBtn.style.display = 'none'; }
-
-    if (data.isTie) { 
-        title.innerText = "It's a Tie! 🤝"; title.className = "win-text"; msg.innerText = "Good game!"; points.innerText = "+0 Points"; points.className = ""; playersContainer.style.display = 'none';
+    const amIWinner = data.winnerId === socket.id; const amILoser = data.loserId === socket.id; 
+    if (currentGameType && (amIWinner || amILoser || data.isTie)) { if (window.recordGameResult) window.recordGameResult(currentGameType, amIWinner, data.isTie); }
+    currentGameType = null; const title = document.getElementById('go-title'); const msg = document.getElementById('go-message'); const points = document.getElementById('go-points'); const modal = document.getElementById('game-over-modal'); const playersContainer = document.getElementById('go-players-container'); 
+    if (data.isTie) { title.innerText = "It's a Tie! 🤝"; title.className = "win-text"; msg.innerText = "Good game!"; points.innerText = "+0 Points"; points.className = ""; playersContainer.style.display = 'none';
     } else { 
-        playersContainer.style.display = 'flex'; const amIWinner = data.winnerId === socket.id;
-        title.innerText = amIWinner ? "Victory! 🏆" : "Defeat! 💀"; title.className = amIWinner ? "win-text" : "lose-text"; msg.innerText = data.isQuit ? (amIWinner ? "Your opponent fled!" : "You quit the game!") : (amIWinner ? "You crushed them!" : "Better luck next time."); points.innerText = amIWinner ? `+${data.pointsWon} Points` : `-${data.pointsLost} Points`; points.className = amIWinner ? "win-text" : "lose-text"; 
+        playersContainer.style.display = 'flex'; title.innerText = amIWinner ? "Victory! 🏆" : "Defeat! 💀"; title.className = amIWinner ? "win-text" : "lose-text"; msg.innerText = data.isQuit ? (amIWinner ? "Your opponent fled!" : "You quit the game!") : (amIWinner ? "You crushed them!" : "Better luck next time."); points.innerText = amIWinner ? `+${data.pointsWon} Points` : `-${data.pointsLost} Points`; points.className = amIWinner ? "win-text" : "lose-text"; 
         if (amIWinner) { playerRankDisplay.innerText = data.newWinnerRank; myUserObj.rank = data.newWinnerRank; } else { playerRankDisplay.innerText = data.newLoserRank; myUserObj.rank = data.newLoserRank; }
         document.getElementById('go-winner-pfp').src = data.winnerData.pfp; document.getElementById('go-winner-name').innerText = data.winnerData.username; document.getElementById('go-winner-rank').innerText = `${data.newWinnerRank}⭐`;
         document.getElementById('go-loser-pfp').src = data.loserData.pfp; document.getElementById('go-loser-name').innerText = data.loserData.username; document.getElementById('go-loser-rank').innerText = `${data.newLoserRank}⭐`;
-    } 
-    modal.style.display = 'flex'; 
+    } modal.style.display = 'flex'; 
 });
 
 document.getElementById('viewBoardBtn').addEventListener('click', () => { document.getElementById('game-over-modal').classList.add('peek-mode'); document.getElementById('returnToResultsBtn').style.display = 'block'; });
@@ -270,14 +246,13 @@ function resetBoardUI() {
     for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const h = document.getElementById(`h-${r}-${c}`); if(h) h.className = 'dab-hline'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const v = document.getElementById(`v-${r}-${c}`); if(v) v.className = 'dab-vline'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const b = document.getElementById(`box-${r}-${c}`); if(b) { b.className = 'dab-box'; b.innerText = ''; } } } document.getElementById('dab-score-red').innerText = '0'; document.getElementById('dab-score-blue').innerText = '0';
     for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const m = document.getElementById(`bs-my-${r}-${c}`); if(m) { m.className = 'bs-cell'; m.innerText = ''; } const t = document.getElementById(`bs-target-${r}-${c}`); if(t) { t.className = 'bs-cell'; t.innerText = ''; } } }
     
-    c8MyHand.innerHTML = ''; c8OppHand.innerHTML = ''; c8Discard.innerHTML = ''; c8ActiveSuit.innerText = ''; document.getElementById('c8-suit-modal').style.display = 'none';
-    lastTopCardStr = ""; // Reset animation tracker
+    c8MyHand.innerHTML = ''; c8OppHand.innerHTML = ''; c8Discard.innerHTML = ''; c8ActiveSuit.innerText = ''; document.getElementById('c8-suit-modal').style.display = 'none'; lastTopCardStr = ""; 
+    rmMyHand.innerHTML = ''; rmOppHand.innerHTML = ''; rmDiscardPile.innerHTML = ''; rmMeldArea.innerHTML = ''; rummySelectedIndices = []; rummySelectedMeldId = null;
 
     document.getElementById('game-over-modal').classList.remove('peek-mode'); document.getElementById('returnToResultsBtn').style.display = 'none'; document.getElementById('roulette-screen').style.display = 'none';
 }
 
 document.getElementById('returnLobbyBtn').addEventListener('click', () => { 
-    document.getElementById('game-over-modal').style.display = 'none'; playSection.style.display = 'none'; playSection.classList.remove('fade-in'); 
-    resetBoardUI(); 
+    document.getElementById('game-over-modal').style.display = 'none'; playSection.style.display = 'none'; playSection.classList.remove('fade-in'); resetBoardUI(); 
     if (isPrivateGame) { document.getElementById('private-lobby-modal').style.display = 'flex'; } else { statusDiv.innerText = "Ready to play?"; findMatchBtn.disabled = false; gameSection.style.display = 'block'; gameSection.classList.add('fade-in'); updateDashboardUI(); } 
 });

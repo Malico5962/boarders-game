@@ -18,7 +18,7 @@
         input[type="text"], input[type="password"], select, textarea { width: 85%; padding: 15px; margin: 10px 0; font-size: 16px; border-radius: 15px; border: 2px solid transparent; background: #f1f2f6; font-family: 'Nunito'; font-weight: 700; transition: all 0.3s; box-shadow: inset 0 4px 6px rgba(0,0,0,0.05); } input:focus, select:focus { border: 2px solid var(--secondary); outline: none; background: white; }
         button { padding: 15px 25px; font-size: 1.2rem; font-weight: 900; cursor: pointer; border-radius: 20px; border: none; background: var(--primary); color: white; margin: 8px 5px; transition: all 0.1s; box-shadow: 0 8px 0 var(--primary-dark), 0 15px 20px rgba(0,0,0,0.2); text-transform: uppercase; letter-spacing: 1px; } button:hover { transform: translateY(2px); box-shadow: 0 6px 0 var(--primary-dark), 0 10px 15px rgba(0,0,0,0.2); } button:active { transform: translateY(8px); box-shadow: 0 0 0 var(--primary-dark), 0 2px 5px rgba(0,0,0,0.2); } button:disabled { background: #ced6e0; box-shadow: 0 8px 0 #a4b0be; cursor: not-allowed; transform: none; }
 
-        #game-section, #play-section { display: none; width: 100%; max-width: 900px; margin: 0 auto; } 
+        #game-section, #play-section { display: none; width: 100%; max-width: 1000px; margin: 0 auto; } 
         .fade-out { animation: fadeOut 0.4s ease forwards; pointer-events: none; } .fade-in { animation: fadeIn 0.4s ease forwards; } @keyframes fadeOut { to { opacity: 0; transform: scale(0.95); } } @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         
         .roulette-window { width: 450px; height: 120px; background: white; border: 8px solid var(--accent); border-radius: 25px; overflow: hidden; position: relative; box-shadow: 0 25px 50px rgba(0,0,0,0.3); margin: 0 auto; }
@@ -32,38 +32,79 @@
         
         #sttt-container, #c4-container, #dab-container, #bs-container, #chk-container { display: none; margin: 0 auto; }
         
-        #sttt-board { display: grid; grid-template-columns: repeat(3, max-content); gap: 10px; background: #2f3640; padding: 12px; border-radius: 20px; width: max-content; margin: 0 auto; box-shadow: 0 20px 50px rgba(0,0,0,0.3); } .macro-cell { position: relative; display: grid; grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(3, 40px); gap: 4px; background: #718093; padding: 6px; border-radius: 12px; box-sizing: border-box; transition: transform 0.3s; width: max-content; } .macro-cell.highlight-active { outline: 4px solid var(--accent); box-shadow: 0 0 20px 5px var(--accent), inset 0 0 20px var(--accent); transform: scale(1.05); z-index: 10; } .macro-cell.highlight-waiting { outline: 4px solid #c8d6e5; box-shadow: 0 0 20px 5px #c8d6e5, inset 0 0 20px #c8d6e5; transform: scale(1.02); z-index: 5; } .macro-cell.disabled { opacity: 0.6; pointer-events: none; filter: grayscale(70%); } .micro-cell { width: 40px; height: 40px; background: #f5f6fa; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-family: 'Poppins'; font-weight: 900; cursor: pointer; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.1); transition: background 0.2s; box-sizing: border-box; overflow: hidden; line-height: 1; } .micro-cell:hover { background: #ffffff; }
+        /* SUPER TIC-TAC-TOE */
+        #sttt-board { display: grid; grid-template-columns: repeat(3, max-content); gap: 10px; background: #2f3640; padding: 12px; border-radius: 20px; width: max-content; margin: 0 auto; box-shadow: 0 20px 50px rgba(0,0,0,0.3); } 
+        .macro-cell { position: relative; display: grid; grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(3, 40px); gap: 4px; background: #718093; padding: 6px; border-radius: 12px; box-sizing: border-box; transition: transform 0.3s; width: max-content; } 
+        .macro-cell.highlight-active { outline: 4px solid var(--accent); box-shadow: 0 0 20px 5px var(--accent), inset 0 0 20px var(--accent); transform: scale(1.05); z-index: 10; } 
+        .macro-cell.highlight-waiting { outline: 4px solid #c8d6e5; box-shadow: 0 0 20px 5px #c8d6e5, inset 0 0 20px #c8d6e5; transform: scale(1.02); z-index: 5; } 
+        .macro-cell.disabled { opacity: 0.6; pointer-events: none; filter: grayscale(70%); } 
+        .micro-cell { width: 40px; height: 40px; background: #f5f6fa; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-family: 'Poppins'; font-weight: 900; cursor: pointer; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.1); transition: background 0.2s; box-sizing: border-box; overflow: hidden; line-height: 1; } .micro-cell:hover { background: #ffffff; }
         .macro-winner { grid-column: 1 / -1; grid-row: 1 / -1; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 6rem; font-family: 'Poppins'; font-weight: 900; background: rgba(245, 246, 250, 0.95); border-radius: 8px; z-index: 5; text-shadow: 0 5px 15px rgba(0,0,0,0.2); animation: popMark 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; } 
         @keyframes drawMark { 0% { transform: scale(0.2); opacity: 0; } 60% { transform: scale(1.3); opacity: 1; } 100% { transform: scale(1); opacity: 1; } } .mark-x, .winner-x { color: var(--primary); animation: drawMark 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; } .mark-o, .winner-o { color: var(--secondary); animation: drawMark 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; } @keyframes popMark { 0% { transform: scale(0.3); opacity: 0; } 70% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } } .sttt-win-pulse { animation: stttPulse 0.5s alternate infinite ease-in-out; box-shadow: 0 0 25px var(--accent) !important; background: var(--accent) !important; transform: scale(1.1) !important; z-index: 20; } @keyframes stttPulse { 0% { filter: brightness(1); } 100% { filter: brightness(1.5); } }
 
+        /* CONNECT 4 */
         #c4-board { display: grid; grid-template-columns: repeat(7, 65px); gap: 12px; background: #0984e3; padding: 20px; border-radius: 25px; width: max-content; margin: 0 auto; box-shadow: inset 0 10px 30px rgba(0,0,0,0.3), 0 25px 50px rgba(0,0,0,0.4); border: 8px solid #0652dd; overflow: hidden; } .c4-cell { width: 65px; height: 65px; background: rgba(255,255,255,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: inset 0 8px 15px rgba(0,0,0,0.3); border: 2px solid rgba(0,0,0,0.1); } .c4-cell:hover { background: rgba(255,255,255,0.3); } .c4-red { background: radial-gradient(circle at 30% 30%, #ff7675, #d63031); box-shadow: 0 6px 12px rgba(0,0,0,0.4), inset 0 -4px 8px rgba(0,0,0,0.3); border: none; animation: slideDown 0.4s ease-in forwards; } .c4-yellow { background: radial-gradient(circle at 30% 30%, #ffeaa7, #fdcb6e); box-shadow: 0 6px 12px rgba(0,0,0,0.4), inset 0 -4px 8px rgba(0,0,0,0.3); border: none; animation: slideDown 0.4s ease-in forwards; } @keyframes slideDown { 0% { transform: translateY(-400px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } } .c4-win-pulse { animation: winPulse 0.5s alternate infinite ease-in-out; border: 4px solid white !important; z-index: 10; } @keyframes winPulse { 0% { transform: scale(1); filter: brightness(1); } 100% { transform: scale(1.15); filter: brightness(1.5); } }
         
+        /* DOTS AND BOXES */
         #dab-container { background: var(--bg-glass); padding: 30px; border-radius: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.15); width: max-content; margin: 0 auto; backdrop-filter: blur(10px); border: 2px solid rgba(255,255,255,0.5); } #dab-board { display: grid; grid-template-columns: 20px 70px 20px 70px 20px 70px 20px; grid-template-rows: 20px 70px 20px 70px 20px 70px 20px; gap: 0; background: #f1f2f6; border-radius: 15px; padding: 15px; box-shadow: inset 0 5px 15px rgba(0,0,0,0.05); } .dab-dot { width: 20px; height: 20px; background: #2d3436; border-radius: 50%; box-shadow: 0 3px 6px rgba(0,0,0,0.2); z-index: 2; position: relative; } .dab-hline { height: 20px; cursor: pointer; transition: all 0.2s; background: rgba(0,0,0,0.03); border-radius: 10px; margin: 0 -5px; } .dab-hline:hover { background: rgba(0,0,0,0.1); transform: scaleY(1.2); } .dab-vline { width: 20px; cursor: pointer; transition: all 0.2s; background: rgba(0,0,0,0.03); border-radius: 10px; margin: -5px 0; } .dab-vline:hover { background: rgba(0,0,0,0.1); transform: scaleX(1.2); } .dab-box { background: transparent; transition: all 0.4s; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-family: 'Poppins'; font-weight: 900; } .dab-line-red { background: var(--primary) !important; box-shadow: 0 0 10px rgba(255, 71, 87, 0.5); cursor: default; } .dab-line-blue { background: var(--secondary) !important; box-shadow: 0 0 10px rgba(30, 144, 255, 0.5); cursor: default; } .dab-box-red { background: rgba(255, 71, 87, 0.15); color: var(--primary); transform: scale(0.9); border-radius: 10px; } .dab-box-blue { background: rgba(30, 144, 255, 0.15); color: var(--secondary); transform: scale(0.9); border-radius: 10px; }
         
+        /* CHECKERS */
         #chk-board { display: grid; grid-template-columns: repeat(8, 60px); grid-template-rows: repeat(8, 60px); border: 15px solid #4a2311; border-radius: 15px; box-shadow: 0 25px 50px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.8); width: max-content; margin: 0 auto; background: #4a2311; gap: 0; } .chk-cell { width: 60px; height: 60px; display: flex; justify-content: center; align-items: center; } .chk-light { background: #e1b182; } .chk-dark { background: #8e4a23; cursor: pointer; box-shadow: inset 0 0 10px rgba(0,0,0,0.2); } .chk-dark:hover { filter: brightness(1.2); } .chk-piece { width: 48px; height: 48px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.8rem; color: white; pointer-events: none; transition: transform 0.2s; animation: hopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; } @keyframes hopIn { 0% { transform: scale(0.6) translateY(-25px); opacity: 0.5; box-shadow: 0 20px 25px rgba(0,0,0,0.3); } 100% { transform: scale(1) translateY(0); opacity: 1; box-shadow: 0 6px 10px rgba(0,0,0,0.4), inset 0 -4px 6px rgba(0,0,0,0.3); } } .chk-red { background: radial-gradient(circle at 30% 30%, #ff6b81, #c0392b); border: 4px solid #8e2111; } .chk-black { background: radial-gradient(circle at 30% 30%, #576574, #222f3e); border: 4px solid #111; } .chk-selected { border: 4px solid var(--accent); box-shadow: 0 0 20px var(--accent), 0 10px 15px rgba(0,0,0,0.5); transform: translateY(-5px) scale(1.1); }
 
-        #bs-container { display: none; margin: 0 auto; } .bs-grid-wrapper { display: flex; gap: 40px; justify-content: center; align-items: flex-start; } .bs-board-title { font-size: 1.5rem; font-family:'Poppins'; font-weight: 900; margin-bottom: 15px; color: white; text-shadow: 0 2px 5px rgba(0,0,0,0.2); } .bs-board { display: grid; grid-template-columns: repeat(10, 40px); grid-template-rows: repeat(10, 40px); gap: 3px; background: #0984e3; padding: 10px; border-radius: 15px; border: 6px solid #0652dd; box-shadow: 0 20px 40px rgba(0,0,0,0.3); } .bs-cell { width: 40px; height: 40px; background: rgba(255,255,255,0.8); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.5rem; cursor: pointer; transition: all 0.2s; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.1); } .bs-cell:hover { background: white; transform: translateY(-2px); } .bs-ship { background: #2f3542; color: white; } .bs-miss { background: #dfe6e9; color: #b2bec3; } .bs-hit { background: var(--primary); color: white; animation: popMark 0.3s ease; box-shadow: 0 0 15px var(--primary); } #bs-setup-menu { margin-top: 30px; background: var(--bg-glass); padding: 25px; border-radius: 20px; display: inline-block; backdrop-filter: blur(10px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); } .bs-ship-revealed { background: #eccc68 !important; color: white; opacity: 0.8; box-shadow: 0 0 10px #eccc68; animation: popMark 0.5s ease forwards; }
+        /* BATTLESHIP */
+        .bs-grid-wrapper { display: flex; gap: 40px; justify-content: center; align-items: flex-start; } .bs-board-title { font-size: 1.5rem; font-family:'Poppins'; font-weight: 900; margin-bottom: 15px; color: white; text-shadow: 0 2px 5px rgba(0,0,0,0.2); } .bs-board { display: grid; grid-template-columns: repeat(10, 40px); grid-template-rows: repeat(10, 40px); gap: 3px; background: #0984e3; padding: 10px; border-radius: 15px; border: 6px solid #0652dd; box-shadow: 0 20px 40px rgba(0,0,0,0.3); } .bs-cell { width: 40px; height: 40px; background: rgba(255,255,255,0.8); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.5rem; cursor: pointer; transition: all 0.2s; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.1); } .bs-cell:hover { background: white; transform: translateY(-2px); } .bs-ship { background: #2f3542; color: white; } .bs-miss { background: #dfe6e9; color: #b2bec3; } .bs-hit { background: var(--primary); color: white; animation: popMark 0.3s ease; box-shadow: 0 0 15px var(--primary); } #bs-setup-menu { margin-top: 30px; background: var(--bg-glass); padding: 25px; border-radius: 20px; display: inline-block; backdrop-filter: blur(10px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); } .bs-ship-revealed { background: #eccc68 !important; color: white; opacity: 0.8; box-shadow: 0 0 10px #eccc68; animation: popMark 0.5s ease forwards; }
 
-        /* CRAZY EIGHTS ANIMATIONS & STYLES */
+        /* CRAZY EIGHTS */
         #c8-container { display: none; width: 100%; flex-direction: column; align-items: center; gap: 30px; margin: 0 auto; max-width: 800px; }
-        .c8-hand { display: flex; justify-content: center; flex-wrap: wrap; gap: -25px; margin-top: 10px; min-height: 120px; }
-        .c8-card { width: 80px; height: 115px; background: white; border-radius: 12px; box-shadow: -5px 0 15px rgba(0,0,0,0.2); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 2rem; font-weight: 900; cursor: pointer; border: 2px solid #dfe6e9; user-select: none; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s; margin-left: -30px; background-color: white; z-index: 1; }
+        .c8-hand { display: flex; justify-content: center; flex-wrap: wrap; gap: 0; margin-top: 10px; min-height: 120px; }
+        .c8-card { width: 80px; height: 115px; background: white; border-radius: 12px; box-shadow: -5px 0 15px rgba(0,0,0,0.2); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 2rem; font-weight: 900; cursor: pointer; border: 2px solid #dfe6e9; user-select: none; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s; margin-left: -40px; background-color: white; z-index: 1; }
         .c8-card:first-child { margin-left: 0; }
         .c8-card:hover { transform: translateY(-20px) scale(1.1); box-shadow: 0 20px 35px rgba(0,0,0,0.4); z-index: 50 !important; }
         .c8-red { color: var(--primary); }
         .c8-black { color: #2f3542; }
-        .c8-hidden { background: repeating-linear-gradient(45deg, var(--secondary), var(--secondary) 10px, var(--secondary-dark) 10px, var(--secondary-dark) 20px); border: 2px solid white; color: transparent; cursor: default; }
+        .c8-hidden { background: repeating-linear-gradient(45deg, var(--primary), var(--primary) 10px, var(--primary-dark) 10px, var(--primary-dark) 20px); border: 2px solid white; color: transparent; cursor: default; }
         .c8-hidden:hover { transform: none; box-shadow: -5px 0 15px rgba(0,0,0,0.2); z-index: 1 !important; }
         .c8-table { display: flex; gap: 40px; justify-content: center; align-items: center; background: rgba(0,0,0,0.2); padding: 40px 80px; border-radius: 40px; box-shadow: inset 0 10px 30px rgba(0,0,0,0.3); position: relative; }
         #c8-deck { cursor: pointer; position: relative; box-shadow: 0 15px 30px rgba(0,0,0,0.4); border: 4px solid white; transition: transform 0.2s; margin-left: 0; }
         #c8-deck:hover { transform: scale(1.05); }
         #c8-deck::after { content: 'DRAW'; position: absolute; font-size: 1.2rem; color: white; background: rgba(0,0,0,0.8); padding: 5px 10px; border-radius: 8px; font-family: 'Poppins'; }
         #c8-discard { margin-left: 0; cursor: default; transform: rotate(-5deg); box-shadow: 0 15px 30px rgba(0,0,0,0.3); border: 2px solid #dfe6e9; }
-        
-        /* NEW: The Drop Animation for Crazy Eights */
         @keyframes dropCard { 0% { transform: scale(1.6) translateY(-60px) rotate(20deg); opacity: 0; box-shadow: 0 30px 60px rgba(0,0,0,0.5); z-index: 100; } 100% { transform: rotate(-5deg) scale(1) translateY(0); opacity: 1; box-shadow: 0 15px 30px rgba(0,0,0,0.3); z-index: 1; } }
         .drop-anim { animation: dropCard 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
 
+        /* RUMMY STYLES - UPDATED TO SPREAD CARDS AND HOVER */
+        #rm-container { display: none; width: 100%; flex-direction: column; align-items: center; gap: 20px; margin: 0 auto; max-width: 900px; }
+        .rm-hand { display: flex; justify-content: center; flex-wrap: wrap; gap: 0; margin-top: 10px; min-height: 120px; }
+        
+        /* Spread cards out by changing negative margin to -15px */
+        .rm-card { width: 70px; height: 100px; background: white; border-radius: 8px; box-shadow: -2px 0 10px rgba(0,0,0,0.2); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 900; cursor: pointer; border: 2px solid #dfe6e9; user-select: none; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.2s; margin-left: -15px; background-color: white; z-index: 1; }
+        .rm-card:first-child { margin-left: 0; }
+        
+        /* Hover animation so cards pop out */
+        .rm-card:hover { transform: translateY(-15px); box-shadow: 0 15px 25px rgba(0,0,0,0.3); z-index: 40 !important; }
+        .rm-card.selected { transform: translateY(-20px); border-color: var(--accent); box-shadow: 0 10px 20px rgba(0,0,0,0.3); z-index: 50 !important; }
+        .rm-card.selected:hover { transform: translateY(-25px) scale(1.05); }
+
+        .rm-table { display: flex; gap: 30px; justify-content: flex-start; align-items: stretch; background: rgba(0,0,0,0.2); padding: 20px 40px; border-radius: 30px; width: 100%; min-height: 150px; overflow-x: auto; box-sizing: border-box; box-shadow: inset 0 10px 30px rgba(0,0,0,0.3); }
+        .rm-piles { display: flex; gap: 40px; align-items: center; padding-right: 30px; border-right: 4px solid rgba(255,255,255,0.2); }
+        .rm-discard-pile { display: flex; position: relative; width: 150px; height: 100px; cursor: pointer; }
+        .rm-discard-card { position: absolute; top: 0; transition: transform 0.2s; box-shadow: -2px 0 10px rgba(0,0,0,0.3); }
+        .rm-discard-card:hover { transform: translateY(-10px); z-index: 40 !important; }
+        .rm-deck { position: relative; box-shadow: 0 10px 20px rgba(0,0,0,0.4); border: 3px solid white; margin-left: 0; transition: transform 0.2s; }
+        .rm-deck:hover { transform: scale(1.05); }
+        .rm-meld-area { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; flex-grow: 1; }
+        .rm-meld { display: flex; gap: 0; padding: 10px 10px 10px 30px; background: rgba(255,255,255,0.1); border-radius: 15px; cursor: pointer; border: 3px solid transparent; transition: all 0.2s; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
+        /* Spread table meld cards nicely too */
+        .rm-meld .rm-card { margin-left: -25px; box-shadow: -2px 0 5px rgba(0,0,0,0.3); pointer-events: none; }
+        .rm-meld.selected { border-color: var(--accent); background: rgba(255,255,255,0.3); transform: scale(1.05); }
+        
+        .rm-actions { display: flex; gap: 15px; margin-top: 5px; }
+        .rm-btn { font-size: 1rem; padding: 10px 20px; margin: 0; box-shadow: 0 6px 0 var(--primary-dark); }
+        #rm-meld-btn { background: var(--secondary); box-shadow: 0 6px 0 var(--secondary-dark); }
+        #rm-layoff-btn { background: var(--accent); box-shadow: 0 6px 0 #e19000; }
+
+        /* Modals - Glassmorphism */
         #c8-suit-modal .modal-content { width: auto; padding: 40px 60px; }
         .suit-btn { font-size: 4rem; padding: 15px 30px; background: white; border: 4px solid #f1f2f6; border-radius: 20px; cursor: pointer; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
         .suit-btn:hover { transform: scale(1.15) translateY(-5px); border-color: var(--accent); box-shadow: 0 15px 30px rgba(0,0,0,0.2); }
@@ -105,14 +146,23 @@
             </div>
         </div>
         
-        <button id="findMatchBtn" style="width: 100%;">🔍 Search for Game</button><br>
-        <button id="privateGameMenuBtn" style="width: 100%; background: var(--accent); color: var(--text); box-shadow: 0 8px 0 #e19000;">🔒 Private Game</button><br>
-        <div style="display: flex; justify-content: space-between; width: 100%; margin-top: 5px;">
-            <button id="viewLeaderboardBtn" style="width: 48%; background: var(--secondary); box-shadow: 0 8px 0 var(--secondary-dark); font-size: 1rem;">🏆 Top 10</button>
-            <button id="openAccountBtn" style="width: 48%; background: #a29bfe; box-shadow: 0 8px 0 #6c5ce7; font-size: 1rem;">⚙️ Account</button>
+        <div style="display: flex; justify-content: space-between; width: 100%;">
+            <button id="findMatchBtn" style="width: 48%; font-size: 1rem; padding: 15px 5px;">🔍 Find Match</button>
+            <button id="privateGameMenuBtn" style="width: 48%; background: var(--accent); color: var(--text); box-shadow: 0 8px 0 #e19000; font-size: 1rem; padding: 15px 5px;">🔒 Private</button>
         </div>
-        <br>
-        <button id="logoutBtn" style="width: 100%; background: #ced6e0; color: var(--text); box-shadow: 0 8px 0 #a4b0be; margin-top: 10px;">Logout</button>
+        
+        <div style="display: flex; justify-content: space-between; width: 100%; margin-top: 10px;">
+            <button id="viewLeaderboardBtn" style="width: 48%; background: var(--secondary); box-shadow: 0 8px 0 var(--secondary-dark); font-size: 1rem; padding: 15px 5px;">🏆 Top 10</button>
+            <button id="viewStatsBtn" style="width: 48%; background: #00b894; box-shadow: 0 8px 0 #009477; font-size: 1rem; color: white; padding: 15px 5px;">📊 My Stats</button>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; width: 100%; margin-top: 10px;">
+            <button id="howToPlayBtn" style="width: 48%; background: #fdcb6e; box-shadow: 0 8px 0 #e1b12c; font-size: 1rem; color: var(--text); padding: 15px 5px;">📖 How to Play</button>
+            <button id="openAccountBtn" style="width: 48%; background: #a29bfe; box-shadow: 0 8px 0 #6c5ce7; font-size: 1rem; padding: 15px 5px;">⚙️ Account</button>
+        </div>
+
+        <button id="logoutBtn" style="width: 100%; background: #ced6e0; color: var(--text); box-shadow: 0 8px 0 #a4b0be; font-size: 1rem; padding: 15px 5px; margin-top: 10px;">Logout</button>
+
         <div id="status" style="margin-top: 20px; font-weight: 900; color: #2d3436; font-size: 1.2rem;">Ready to play?</div>
     </div>
 
@@ -144,24 +194,54 @@
         </div>
 
         <div id="c8-container">
+            <div><h3 style="margin:0; color:white; text-shadow:0 2px 4px rgba(0,0,0,0.3);">Opponent: <span id="c8-opp-count">7</span> Cards</h3><div id="c8-opp-hand" class="c8-hand"></div></div>
+            <div class="c8-table"><div id="c8-deck" class="c8-card c8-hidden"></div><div id="c8-discard" class="c8-card"></div><div id="c8-active-suit" style="font-size: 4rem; font-weight: 900; margin-left: 20px; text-shadow: 0 5px 15px rgba(0,0,0,0.2);"></div></div>
+            <div><h3 style="margin:0; color:white; text-shadow:0 2px 4px rgba(0,0,0,0.3);">Your Hand</h3><div id="c8-my-hand" class="c8-hand"></div></div>
+        </div>
+
+        <div id="rm-container">
             <div>
-                <h3 style="margin:0; color:white; text-shadow:0 2px 4px rgba(0,0,0,0.3);">Opponent: <span id="c8-opp-count">7</span> Cards</h3>
-                <div id="c8-opp-hand" class="c8-hand"></div>
+                <h3 style="margin:0; color:white; text-shadow:0 2px 4px rgba(0,0,0,0.3);">Opponent: <span id="rm-opp-count">10</span> Cards</h3>
+                <div id="rm-opp-hand" class="rm-hand"></div>
             </div>
             
-            <div class="c8-table">
-                <div id="c8-deck" class="c8-card c8-hidden"></div>
-                <div id="c8-discard" class="c8-card"></div>
-                <div id="c8-active-suit" style="font-size: 4rem; font-weight: 900; margin-left: 20px; text-shadow: 0 5px 15px rgba(0,0,0,0.2);"></div>
+            <div class="rm-table">
+                <div class="rm-piles">
+                    <div id="rm-deck" class="rm-card c8-hidden rm-deck"></div>
+                    <div id="rm-discard-pile" class="rm-discard-pile"></div>
+                </div>
+                <div id="rm-meld-area" class="rm-meld-area"></div>
             </div>
             
-            <div>
+            <div class="rm-actions">
+                <button id="rm-meld-btn" class="rm-btn">🃏 Meld Selected</button>
+                <button id="rm-layoff-btn" class="rm-btn">➕ Lay Off</button>
+                <button id="rm-discard-btn" class="rm-btn">🗑️ Discard</button>
+            </div>
+
+            <div style="width: 100%;">
                 <h3 style="margin:0; color:white; text-shadow:0 2px 4px rgba(0,0,0,0.3);">Your Hand</h3>
-                <div id="c8-my-hand" class="c8-hand"></div>
+                <div id="rm-my-hand" class="rm-hand"></div>
             </div>
         </div>
     </div>
 
+    <div id="howtoplay-modal" class="modal-overlay">
+        <div class="modal-content" style="width: 600px; max-width: 90vw;">
+            <h2 style="font-size: 2.5rem; margin-top:0;">How to Play 📖</h2>
+            <div id="howtoplay-content" style="text-align: left; max-height: 60vh; overflow-y: auto; padding-right: 15px;"></div>
+            <button id="closeHowToPlayBtn" style="width:100%; margin-top: 20px; background: #ced6e0; color: var(--text); box-shadow: 0 8px 0 #a4b0be;">Close</button>
+        </div>
+    </div>
+
+    <div id="stats-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 style="font-size: 2.5rem; margin-top:0;">Your Stats 📊</h2>
+            <div id="stats-content"></div>
+            <button id="closeStatsBtn" style="width:100%; margin-top: 20px; background: #ced6e0; color: var(--text); box-shadow: 0 8px 0 #a4b0be;">Close</button>
+        </div>
+    </div>
+    
     <div id="c8-suit-modal" class="modal-overlay" style="z-index: 1000;">
         <div class="modal-content">
             <h2 style="font-size: 2.5rem; margin-top: 0; color: var(--text);">Choose Suit</h2>
@@ -187,21 +267,17 @@
         <div class="modal-content">
             <h2 style="font-size: 2rem;">Account Settings</h2>
             <img id="settingsPfpPreview" src="" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--primary); margin-bottom: 15px; object-fit: cover; box-shadow: 0 10px 20px rgba(0,0,0,0.1);">
-            
             <input type="text" id="setProfilePic" placeholder="Profile Pic Image URL (Leave blank for default)">
             <textarea id="setDesc" placeholder="Bio / Description" rows="2"></textarea>
-            
             <hr style="border: 2px solid #f1f2f6; margin: 20px 0; border-radius: 2px;">
             <input type="text" id="setUsername" placeholder="Change Username">
             <input type="password" id="setPassword" placeholder="Change Password">
-            
             <div style="margin: 20px 0; text-align: left; background: #f1f2f6; padding: 15px; border-radius: 15px; border: 2px solid #dfe6e9;">
                 <label style="font-weight: 900; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; gap: 10px;">
                     <input type="checkbox" id="setAnon" style="width: 20px; height: 20px; cursor: pointer;"> 🕵️ Mask profile
                 </label>
                 <p style="font-size: 0.9rem; margin: 8px 0 0 0; color: #636e72; font-weight: 700;">When checked, your name and avatar are hidden from random public opponents.</p>
             </div>
-            
             <div id="account-error" style="color:var(--primary); font-weight:bold; margin-bottom:15px; font-size: 1.1rem;"></div>
             <button id="saveAccountBtn" style="width:100%;">Save Changes</button>
             <button id="closeAccountBtn" style="width:100%; background: #ced6e0; color: var(--text); box-shadow: 0 8px 0 #a4b0be; margin-top: 10px;">Cancel</button>
@@ -222,7 +298,6 @@
         <div class="modal-content" style="width: 500px;">
             <h2 id="go-title">Game Over</h2>
             <p id="go-message" style="font-size:1.5rem; font-weight: 900; margin:0; color: var(--text);"></p>
-            
             <div id="go-players-container" style="display: flex; justify-content: space-around; align-items: center; margin: 20px 0; background: #f1f2f6; padding: 15px; border-radius: 20px; box-shadow: inset 0 5px 10px rgba(0,0,0,0.05);">
                 <div style="text-align: center;">
                     <img id="go-winner-pfp" src="" style="width: 70px; height: 70px; border-radius: 50%; border: 4px solid var(--secondary); object-fit: cover; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
@@ -236,7 +311,6 @@
                     <div id="go-loser-rank" style="color: var(--primary); font-weight: 900; font-size: 1.2rem;"></div>
                 </div>
             </div>
-
             <p id="go-points"></p>
             <button id="viewBoardBtn" style="width:100%; background: #a29bfe; box-shadow: 0 8px 0 #6c5ce7; margin-bottom: 10px;">👁️ View Final Board</button>
             <button id="returnLobbyBtn" style="width:100%; background: #ced6e0; color: var(--text); box-shadow: 0 8px 0 #a4b0be;">Return to Lobby</button>
@@ -276,13 +350,11 @@
         <div class="modal-content" style="width: 500px;">
             <h2 style="font-size: 2rem; margin-top: 0;">Room: <span id="lobbyCodeDisplay" style="color:var(--primary); background: #f1f2f6; padding: 5px 15px; border-radius: 10px;"></span></h2>
             <p style="font-weight:900; font-size: 1.2rem; color: var(--text);">Players: <span id="lobbyPlayersDisplay" style="color: var(--secondary);"></span>/2</p>
-            
             <div id="chat-box"></div>
             <div style="display:flex; gap:10px;">
                 <input type="text" id="chatInput" placeholder="Say hi..." style="margin:0; width:75%;">
                 <button id="sendChatBtn" style="margin:0; width:25%; padding:0; font-size:1.1rem;">Send</button>
             </div>
-            
             <div id="hostControls" style="display:none; margin-top:20px; background: #f1f2f6; padding: 20px; border-radius: 20px; border: 2px solid #dfe6e9;">
                 <label style="font-weight:900; font-size: 1.2rem; color: var(--text);">Select Game Mode:</label>
                 <select id="gameSelector" style="width: 100%; font-size: 1.2rem; padding: 10px; margin: 10px 0;">
@@ -293,6 +365,7 @@
                     <option value="Battleship">🚢 Battleship</option>
                     <option value="Checkers">🔴 Checkers</option>
                     <option value="Crazy Eights">🃏 Crazy Eights</option>
+                    <option value="Rummy">🃏 Rummy</option>
                 </select>
                 <button id="startPrivateBtn" style="width:100%; font-size: 1.4rem; padding: 15px 0;" disabled>Waiting for player...</button>
             </div>
@@ -303,6 +376,8 @@
     <div id="online-counter">🟢 Players Online: 0</div>
 
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/stats.js"></script>
+    <script src="/howtoplay.js"></script>
     <script src="/app.js"></script>
 </body>
 </html>
