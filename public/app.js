@@ -12,10 +12,19 @@ const dabContainer = document.getElementById('dab-container'); const dabBoard = 
 const bsContainer = document.getElementById('bs-container'); const bsMyBoard = document.getElementById('bs-my-board'); const bsTrackingBoard = document.getElementById('bs-tracking-board');
 const chkContainer = document.getElementById('chk-container'); const chkBoard = document.getElementById('chk-board');
 
+const c8Container = document.getElementById('c8-container'); 
+const c8OppHand = document.getElementById('c8-opp-hand'); 
+const c8MyHand = document.getElementById('c8-my-hand'); 
+const c8Discard = document.getElementById('c8-discard'); 
+const c8Deck = document.getElementById('c8-deck'); 
+const c8ActiveSuit = document.getElementById('c8-active-suit');
+
 let currentRoom = null, mySymbol = null, currentGameType = null, myUsername = null, myUserObj = null; 
 let myPrivateCode = null; let isLobbyHost = false; let isPrivateGame = false;
 let localBattleshipBoard = Array(10).fill(null).map(() => Array(10).fill(0));
 let chkSelected = null; let lastChkGame = null;
+let pendingC8CardIndex = null;
+let lastTopCardStr = ""; // Tracks the top card to run the drop animation!
 
 socket.on('onlineCount', (count) => { document.getElementById('online-counter').innerText = `🟢 Players Online: ${count}`; });
 window.onload = () => { const savedUser = localStorage.getItem('boarders_account'); if (savedUser) { const { username, password } = JSON.parse(savedUser); usernameInput.value = username; passwordInput.value = password; handleAuth('login'); } };
@@ -67,12 +76,13 @@ document.getElementById('quitBtn').addEventListener('click', () => { socket.emit
 socket.on('matchFound', (data) => { 
     document.getElementById('private-lobby-modal').style.display = 'none'; statusDiv.innerText = `Match found! 🎯`; gameSection.classList.add('fade-out'); 
     const rScreen = document.getElementById('roulette-screen'); const rStrip = document.getElementById('roulette-strip');
-    const gamesList = ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Checkers'];
+    const gamesList = ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Checkers', 'Crazy Eights'];
     let stripHTML = ''; for(let i=0; i<30; i++) { stripHTML += `<div class="roulette-item">${gamesList[Math.floor(Math.random() * gamesList.length)]}</div>`; }
     stripHTML += `<div class="roulette-item" style="color: var(--primary);">${data.game}</div>`;
     rStrip.innerHTML = stripHTML; rScreen.style.display = 'flex';
-    rStrip.style.transition = 'none'; rStrip.style.transform = 'translateY(0)'; void rStrip.offsetWidth; 
-    rStrip.style.transition = 'transform 3.5s cubic-bezier(0.15, 0.85, 0.3, 1)'; rStrip.style.transform = `translateY(-${30 * 120}px)`; 
+    
+    rStrip.style.transition = 'none'; rStrip.style.transform = 'translateY(0)'; 
+    setTimeout(() => { rStrip.style.transition = 'transform 3.5s cubic-bezier(0.15, 0.85, 0.3, 1)'; rStrip.style.transform = `translateY(-${30 * 120}px)`; }, 50);
 });
 
 document.getElementById('privateGameMenuBtn').addEventListener('click', () => document.getElementById('private-menu-modal').style.display = 'flex'); document.getElementById('closePrivateMenuBtn').addEventListener('click', () => document.getElementById('private-menu-modal').style.display = 'none'); document.getElementById('hostBtn').addEventListener('click', () => { document.getElementById('private-menu-modal').style.display = 'none'; document.getElementById('host-modal').style.display = 'flex'; }); document.getElementById('cancelHostBtn').addEventListener('click', () => document.getElementById('host-modal').style.display = 'none'); document.getElementById('joinBtn').addEventListener('click', () => { document.getElementById('private-menu-modal').style.display = 'none'; document.getElementById('join-modal').style.display = 'flex'; }); document.getElementById('cancelJoinBtn').addEventListener('click', () => document.getElementById('join-modal').style.display = 'none');
@@ -101,16 +111,19 @@ socket.on('startGame', (gameState) => {
     else if (currentGameType === 'Checkers') roleDisplay.innerHTML = `You are playing as: <strong>${mySymbol === 'Red' ? '🔴 Red' : '⚫ Black'}</strong>`;
     else if (currentGameType === 'Super Tic-Tac-Toe') roleDisplay.innerHTML = `You are playing as: <strong style="color: ${mySymbol === 'X' ? 'var(--primary)' : 'var(--secondary)'};">${mySymbol}</strong>`;
     else if (currentGameType === 'Battleship') roleDisplay.innerHTML = `You are Commander <strong>${mySymbol}</strong>`;
+    else if (currentGameType === 'Crazy Eights') roleDisplay.innerHTML = `You are <strong>${mySymbol}</strong>`;
 
     document.getElementById('roulette-screen').style.display = 'none'; 
     gameSection.style.display = 'none'; gameSection.classList.remove('fade-out'); playSection.style.display = 'block'; playSection.classList.add('fade-in');
-    stttContainer.style.display = 'none'; c4Container.style.display = 'none'; dabContainer.style.display = 'none'; bsContainer.style.display = 'none'; chkContainer.style.display = 'none';
+    
+    stttContainer.style.display = 'none'; c4Container.style.display = 'none'; dabContainer.style.display = 'none'; bsContainer.style.display = 'none'; chkContainer.style.display = 'none'; c8Container.style.display = 'none';
 
     if (currentGameType === 'Super Tic-Tac-Toe') { stttContainer.style.display = 'block'; updateSTTTUI(gameState); } 
     else if (currentGameType === 'Connect 4') { c4Container.style.display = 'block'; updateC4UI(gameState); } 
     else if (currentGameType === 'Dots and Boxes') { dabContainer.style.display = 'block'; updateDABUI(gameState); }
     else if (currentGameType === 'Checkers') { chkContainer.style.display = 'block'; chkSelected = null; updateChkUI(gameState); }
     else if (currentGameType === 'Battleship') { bsContainer.style.display = 'block'; document.getElementById('bs-setup-menu').style.display = 'block'; document.getElementById('bs-randomize-btn').click(); turnDisplay.innerText = "Arrange your fleet!"; turnDisplay.style.color = "var(--text)"; }
+    else if (currentGameType === 'Crazy Eights') { c8Container.style.display = 'flex'; turnDisplay.innerText = "Dealing cards..."; }
 });
 
 function randomizeBattleship() { localBattleshipBoard = Array(10).fill(null).map(() => Array(10).fill(0)); const ships = [5, 4, 3, 3, 2]; for (let shipLen of ships) { let placed = false; while (!placed) { const isHoriz = Math.random() > 0.5; const r = Math.floor(Math.random() * (isHoriz ? 10 : 10 - shipLen)); const c = Math.floor(Math.random() * (isHoriz ? 10 - shipLen : 10)); let canPlace = true; for (let i = 0; i < shipLen; i++) { if (isHoriz && localBattleshipBoard[r][c + i] !== 0) canPlace = false; if (!isHoriz && localBattleshipBoard[r + i][c] !== 0) canPlace = false; } if (canPlace) { for (let i = 0; i < shipLen; i++) { if (isHoriz) localBattleshipBoard[r][c + i] = 1; else localBattleshipBoard[r + i][c] = 1; } placed = true; } } } drawLocalBattleship(); }
@@ -133,37 +146,95 @@ socket.on('revealBattleship', (secretBoards) => {
     }
 });
 
-// UPDATED: STTT Gold vs Silver Highlight Logic
-socket.on('updateBoard', (game) => { 
+socket.on('updateBoard', updateSTTTUI);
+function updateSTTTUI(game) { 
     turnDisplay.innerText = game.turn === mySymbol ? "🎯 Your Turn!" : "⏳ Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; 
-    document.querySelectorAll('.macro-cell').forEach(c => c.classList.remove('sttt-win-pulse'));
+    document.querySelectorAll('.macro-cell').forEach(c => { c.classList.remove('sttt-win-pulse'); c.classList.remove('highlight-active'); c.classList.remove('highlight-waiting'); });
 
     for (let i = 0; i < 9; i++) { 
         const macroDiv = document.getElementById(`macro-${i}`); 
-        
-        // If board is already won, lock it
         if (game.macroBoard[i]) { 
             const winnerClass = game.macroBoard[i] === 'X' ? 'winner-x' : 'winner-o'; 
             if (!macroDiv.innerHTML.includes('macro-winner')) { macroDiv.innerHTML = `<div class="macro-winner ${winnerClass}">${game.macroBoard[i] === 'Tie' ? '-' : game.macroBoard[i]}</div>`; macroDiv.className = 'macro-cell disabled'; } 
             continue; 
         } 
         
-        // HIGHLIGHT LOGIC
         if (!game.winner && (game.nextBoard === -1 || game.nextBoard === i)) {
-            macroDiv.className = game.turn === mySymbol ? 'macro-cell highlight-active' : 'macro-cell highlight-waiting';
+            macroDiv.classList.add(game.turn === mySymbol ? 'highlight-active' : 'highlight-waiting');
         } else {
-            macroDiv.className = 'macro-cell disabled';
+            macroDiv.classList.add('disabled');
         }
 
         for (let j = 0; j < 9; j++) { const microDiv = document.getElementById(`micro-${i}-${j}`); if (microDiv) { const cellValue = game.board[i][j]; if (cellValue && microDiv.innerHTML === '') microDiv.innerHTML = `<span class="${cellValue === 'X' ? 'mark-x' : 'mark-o'}">${cellValue}</span>`; } } 
     } 
 
     if (game.winLine) { game.winLine.forEach(i => { document.getElementById(`macro-${i}`).classList.add('sttt-win-pulse'); }); }
-});
+}
 
 socket.on('updateC4Board', (game) => { turnDisplay.innerText = game.turn === mySymbol ? "🔴 Your Turn!" : "🟡 Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? (mySymbol==='Red'?'var(--primary)':'var(--accent)') : (mySymbol==='Red'?'var(--accent)':'var(--primary)'); document.querySelectorAll('.c4-cell').forEach(c => c.classList.remove('c4-win-pulse')); for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = document.getElementById(`c4-${r}-${c}`); if (game.board[r][c] === 'Red' && !cell.classList.contains('c4-red')) cell.className = 'c4-cell c4-red'; else if (game.board[r][c] === 'Yellow' && !cell.classList.contains('c4-yellow')) cell.className = 'c4-cell c4-yellow'; } } if (game.winLine) { game.winLine.forEach(([r, c]) => { document.getElementById(`c4-${r}-${c}`).classList.add('c4-win-pulse'); }); } });
 socket.on('updateDABBoard', (game) => { turnDisplay.innerText = game.turn === mySymbol ? (mySymbol==='Red'?'🔴 Your Turn!':'🔵 Your Turn!') : "⏳ Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? (mySymbol==='Red'?'var(--primary)':'var(--secondary)') : (mySymbol==='Red'?'var(--secondary)':'var(--primary)'); document.getElementById('dab-score-red').innerText = game.scores['Red']; document.getElementById('dab-score-blue').innerText = game.scores['Blue']; for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const hLine = document.getElementById(`h-${r}-${c}`); if (game.hLines[r][c] === 'Red') hLine.className = 'dab-hline dab-line-red'; else if (game.hLines[r][c] === 'Blue') hLine.className = 'dab-hline dab-line-blue'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const vLine = document.getElementById(`v-${r}-${c}`); if (game.vLines[r][c] === 'Red') vLine.className = 'dab-vline dab-line-red'; else if (game.vLines[r][c] === 'Blue') vLine.className = 'dab-vline dab-line-blue'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const box = document.getElementById(`box-${r}-${c}`); if (game.boxes[r][c] === 'Red') { box.className = 'dab-box dab-box-red'; box.innerText = 'R'; } else if (game.boxes[r][c] === 'Blue') { box.className = 'dab-box dab-box-blue'; box.innerText = 'B'; } } } });
-socket.on('updateCheckersBoard', updateChkUI); function updateChkUI(game) { lastChkGame = game; turnDisplay.innerText = game.turn === mySymbol ? "🎯 Your Turn!" : "⏳ Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; for (let r = 0; r < 8; r++) { for (let c = 0; c < 8; c++) { if ((r + c) % 2 === 0) continue; const cell = document.getElementById(`chk-${r}-${c}`); cell.innerHTML = ''; const p = game.board[r][c]; if (p !== 0) { const pieceDiv = document.createElement('div'); pieceDiv.className = `chk-piece ${p === 1 || p === 3 ? 'chk-red' : 'chk-black'}`; if (chkSelected && chkSelected.r === r && chkSelected.c === c) pieceDiv.classList.add('chk-selected'); if (p === 3 || p === 4) pieceDiv.innerText = '👑'; cell.appendChild(pieceDiv); } } } }
+socket.on('updateCheckersBoard', updateChkUI); function updateChkUI(game) { lastChkGame = game; turnDisplay.innerText = game.turn === mySymbol ? (game.multiJumping ? "🔄 Double Jump Available!" : "🎯 Your Turn!") : "⏳ Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; if (game.multiJumping && game.turn === mySymbol) { chkSelected = { r: game.multiJumping.r, c: game.multiJumping.c }; } else if (game.turn !== mySymbol) { chkSelected = null; } for (let r = 0; r < 8; r++) { for (let c = 0; c < 8; c++) { if ((r + c) % 2 === 0) continue; const cell = document.getElementById(`chk-${r}-${c}`); cell.innerHTML = ''; const p = game.board[r][c]; if (p !== 0) { const pieceDiv = document.createElement('div'); pieceDiv.className = `chk-piece ${p === 1 || p === 3 ? 'chk-red' : 'chk-black'}`; if (chkSelected && chkSelected.r === r && chkSelected.c === c) pieceDiv.classList.add('chk-selected'); if (p === 3 || p === 4) pieceDiv.innerText = '👑'; cell.appendChild(pieceDiv); } } } }
+
+c8Deck.onclick = () => { if (currentGameType === 'Crazy Eights') socket.emit('makeC8Draw', { roomName: currentRoom }); };
+window.selectC8Suit = function(suit) {
+    document.getElementById('c8-suit-modal').style.display = 'none';
+    socket.emit('makeC8Play', { roomName: currentRoom, cardIndex: pendingC8CardIndex, declaredSuit: suit });
+    pendingC8CardIndex = null;
+}
+
+// FIXED: Animated Card Drops
+socket.on('updateCrazyEights', (data) => {
+    turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn!" : "⏳ Opponent's Turn...";
+    turnDisplay.style.color = data.turn === mySymbol ? "var(--primary)" : "var(--secondary)";
+
+    document.getElementById('c8-opp-count').innerText = data.opponentHandCount;
+    
+    c8OppHand.innerHTML = '';
+    for(let i=0; i<data.opponentHandCount; i++) {
+        c8OppHand.innerHTML += `<div class="c8-card c8-hidden"></div>`;
+    }
+
+    c8MyHand.innerHTML = '';
+    data.myHand.forEach((card, index) => {
+        let colorClass = (card.suit === '♥' || card.suit === '♦') ? 'c8-red' : 'c8-black';
+        let cardDiv = document.createElement('div');
+        cardDiv.className = `c8-card ${colorClass}`;
+        cardDiv.innerHTML = `<div>${card.val}</div><div>${card.suit}</div>`;
+        cardDiv.onclick = () => {
+            if (data.turn !== mySymbol) return;
+            if (card.val === '8') {
+                pendingC8CardIndex = index;
+                document.getElementById('c8-suit-modal').style.display = 'flex';
+            } else {
+                socket.emit('makeC8Play', { roomName: currentRoom, cardIndex: index, declaredSuit: null });
+            }
+        };
+        c8MyHand.appendChild(cardDiv);
+    });
+
+    if (data.topCard) {
+        let colorClass = (data.topCard.suit === '♥' || data.topCard.suit === '♦') ? 'c8-red' : 'c8-black';
+        let cardStr = `${data.topCard.val}${data.topCard.suit}`;
+        
+        c8Discard.innerHTML = `<div>${data.topCard.val}</div><div>${data.topCard.suit}</div>`;
+        
+        if (lastTopCardStr !== cardStr) {
+            c8Discard.className = `c8-card ${colorClass}`;
+            void c8Discard.offsetWidth; 
+            c8Discard.classList.add('drop-anim');
+            lastTopCardStr = cardStr;
+        } else {
+            c8Discard.className = `c8-card ${colorClass} drop-anim`;
+        }
+    }
+
+    if (data.activeSuit) {
+        c8ActiveSuit.innerText = data.activeSuit;
+        c8ActiveSuit.className = (data.activeSuit === '♥' || data.activeSuit === '♦') ? 'c8-red' : 'c8-black';
+    } else {
+        c8ActiveSuit.innerText = '';
+    }
+});
 
 document.addEventListener('keydown', (e) => { 
     if (e.key === 'Escape') { document.getElementById('leaderboard-modal').style.display = 'none'; document.getElementById('private-menu-modal').style.display = 'none'; document.getElementById('host-modal').style.display = 'none'; document.getElementById('join-modal').style.display = 'none'; document.getElementById('account-modal').style.display = 'none'; document.getElementById('returnToResultsBtn').click(); }
@@ -175,7 +246,6 @@ socket.on('gameOverScreen', (data) => {
     const title = document.getElementById('go-title'); const msg = document.getElementById('go-message'); const points = document.getElementById('go-points'); const modal = document.getElementById('game-over-modal'); 
     const playersContainer = document.getElementById('go-players-container'); 
     
-    // UPDATED: Show search button strictly if not a private match
     const searchBtn = document.getElementById('rematchSearchBtn');
     if (!isPrivateGame) { searchBtn.style.display = 'inline-block'; } else { searchBtn.style.display = 'none'; }
 
@@ -183,7 +253,7 @@ socket.on('gameOverScreen', (data) => {
         title.innerText = "It's a Tie! 🤝"; title.className = "win-text"; msg.innerText = "Good game!"; points.innerText = "+0 Points"; points.className = ""; playersContainer.style.display = 'none';
     } else { 
         playersContainer.style.display = 'flex'; const amIWinner = data.winnerId === socket.id;
-        title.innerText = amIWinner ? "Victory! 🏆" : "Defeat! 💀"; title.className = amIWinner ? "win-text" : "lose-text"; msg.innerText = data.isQuit ? (amIWinner ? "Your opponent fled!" : "You quit the game!") : (amIWinner ? "You crushed them!" : "Better luck next time."); points.innerText = amIWinner ? "+50 Points" : "-50 Points"; points.className = amIWinner ? "win-text" : "lose-text"; 
+        title.innerText = amIWinner ? "Victory! 🏆" : "Defeat! 💀"; title.className = amIWinner ? "win-text" : "lose-text"; msg.innerText = data.isQuit ? (amIWinner ? "Your opponent fled!" : "You quit the game!") : (amIWinner ? "You crushed them!" : "Better luck next time."); points.innerText = amIWinner ? `+${data.pointsWon} Points` : `-${data.pointsLost} Points`; points.className = amIWinner ? "win-text" : "lose-text"; 
         if (amIWinner) { playerRankDisplay.innerText = data.newWinnerRank; myUserObj.rank = data.newWinnerRank; } else { playerRankDisplay.innerText = data.newLoserRank; myUserObj.rank = data.newLoserRank; }
         document.getElementById('go-winner-pfp').src = data.winnerData.pfp; document.getElementById('go-winner-name').innerText = data.winnerData.username; document.getElementById('go-winner-rank').innerText = `${data.newWinnerRank}⭐`;
         document.getElementById('go-loser-pfp').src = data.loserData.pfp; document.getElementById('go-loser-name').innerText = data.loserData.username; document.getElementById('go-loser-rank').innerText = `${data.newLoserRank}⭐`;
@@ -199,9 +269,15 @@ function resetBoardUI() {
     for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { document.getElementById(`c4-${r}-${c}`).className = 'c4-cell'; } }
     for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const h = document.getElementById(`h-${r}-${c}`); if(h) h.className = 'dab-hline'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const v = document.getElementById(`v-${r}-${c}`); if(v) v.className = 'dab-vline'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const b = document.getElementById(`box-${r}-${c}`); if(b) { b.className = 'dab-box'; b.innerText = ''; } } } document.getElementById('dab-score-red').innerText = '0'; document.getElementById('dab-score-blue').innerText = '0';
     for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const m = document.getElementById(`bs-my-${r}-${c}`); if(m) { m.className = 'bs-cell'; m.innerText = ''; } const t = document.getElementById(`bs-target-${r}-${c}`); if(t) { t.className = 'bs-cell'; t.innerText = ''; } } }
+    
+    c8MyHand.innerHTML = ''; c8OppHand.innerHTML = ''; c8Discard.innerHTML = ''; c8ActiveSuit.innerText = ''; document.getElementById('c8-suit-modal').style.display = 'none';
+    lastTopCardStr = ""; // Reset animation tracker
+
     document.getElementById('game-over-modal').classList.remove('peek-mode'); document.getElementById('returnToResultsBtn').style.display = 'none'; document.getElementById('roulette-screen').style.display = 'none';
 }
 
-// Fixed Play Again button
-document.getElementById('rematchSearchBtn').addEventListener('click', () => { document.getElementById('game-over-modal').style.display = 'none'; playSection.style.display = 'none'; playSection.classList.remove('fade-in'); resetBoardUI(); gameSection.style.display = 'block'; gameSection.classList.add('fade-in'); updateDashboardUI(); document.getElementById('findMatchBtn').click(); });
-document.getElementById('returnLobbyBtn').addEventListener('click', () => { document.getElementById('game-over-modal').style.display = 'none'; playSection.style.display = 'none'; playSection.classList.remove('fade-in'); resetBoardUI(); if (isPrivateGame) { document.getElementById('private-lobby-modal').style.display = 'flex'; } else { statusDiv.innerText = "Ready to play?"; findMatchBtn.disabled = false; gameSection.style.display = 'block'; gameSection.classList.add('fade-in'); updateDashboardUI(); } });
+document.getElementById('returnLobbyBtn').addEventListener('click', () => { 
+    document.getElementById('game-over-modal').style.display = 'none'; playSection.style.display = 'none'; playSection.classList.remove('fade-in'); 
+    resetBoardUI(); 
+    if (isPrivateGame) { document.getElementById('private-lobby-modal').style.display = 'flex'; } else { statusDiv.innerText = "Ready to play?"; findMatchBtn.disabled = false; gameSection.style.display = 'block'; gameSection.classList.add('fade-in'); updateDashboardUI(); } 
+});
