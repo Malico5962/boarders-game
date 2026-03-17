@@ -7,13 +7,13 @@ const findMatchBtn = document.getElementById('findMatchBtn'); const statusDiv = 
 const roleDisplay = document.getElementById('player-role-display'); const turnDisplay = document.getElementById('turn-display');
 
 const stttContainer = document.getElementById('sttt-container'); const stttBoard = document.getElementById('sttt-board');
+const tttContainer = document.getElementById('ttt-container'); const tttBoard = document.getElementById('ttt-board');
 const c4Container = document.getElementById('c4-container'); const c4Board = document.getElementById('c4-board');
 const dabContainer = document.getElementById('dab-container'); const dabBoard = document.getElementById('dab-board');
 const bsContainer = document.getElementById('bs-container'); const bsMyBoard = document.getElementById('bs-my-board'); const bsTrackingBoard = document.getElementById('bs-tracking-board');
 const chkContainer = document.getElementById('chk-container'); const chkBoard = document.getElementById('chk-board');
 
 const c8Container = document.getElementById('c8-container'); const c8OppHand = document.getElementById('c8-opp-hand'); const c8MyHand = document.getElementById('c8-my-hand'); const c8Discard = document.getElementById('c8-discard'); const c8Deck = document.getElementById('c8-deck'); const c8ActiveSuit = document.getElementById('c8-active-suit');
-
 const rmContainer = document.getElementById('rm-container'); const rmOppHand = document.getElementById('rm-opp-hand'); const rmMyHand = document.getElementById('rm-my-hand'); const rmDiscardPile = document.getElementById('rm-discard-pile'); const rmDeck = document.getElementById('rm-deck'); const rmMeldArea = document.getElementById('rm-meld-area');
 
 let currentRoom = null, mySymbol = null, currentGameType = null, myUsername = null, myUserObj = null; 
@@ -52,21 +52,12 @@ document.getElementById('saveAccountBtn').addEventListener('click', async () => 
     if (res.ok) { myUserObj = data.user; myUsername = myUserObj.username; localStorage.setItem('boarders_account', JSON.stringify({ username: myUserObj.username, password: newPassword || JSON.parse(localStorage.getItem('boarders_account')).password })); updateDashboardUI(); document.getElementById('account-modal').style.display = 'none'; } else { document.getElementById('account-error').innerText = data.error; }
 });
 
-document.getElementById('viewLeaderboardBtn').addEventListener('click', async () => { 
-    document.getElementById('leaderboard-modal').style.display = 'flex'; 
-    const res = await fetch('/leaderboard'); const data = await res.json(); 
-    document.getElementById('leaderboard-content').innerHTML = data.map((u, i) => `
-        <div class="leaderboard-item"><div class="lb-left"><span style="font-weight: 900; margin-right: 15px; color: var(--secondary);">#${i+1}</span><img src="${u.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username}`}"><span>${u.username}</span></div><span style="color:var(--primary);">${u.rank} ⭐</span></div>`).join(''); 
-}); 
+document.getElementById('viewLeaderboardBtn').addEventListener('click', async () => { document.getElementById('leaderboard-modal').style.display = 'flex'; const res = await fetch('/leaderboard'); const data = await res.json(); document.getElementById('leaderboard-content').innerHTML = data.map((u, i) => `<div class="leaderboard-item"><div class="lb-left"><span style="font-weight: 900; margin-right: 15px; color: var(--secondary);">#${i+1}</span><img src="${u.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username}`}"><span>${u.username}</span></div><span style="color:var(--primary);">${u.rank} ⭐</span></div>`).join(''); }); 
 document.getElementById('closeLeaderboardBtn').addEventListener('click', () => { document.getElementById('leaderboard-modal').style.display = 'none'; });
-
 document.getElementById('viewStatsBtn').addEventListener('click', () => { if (window.renderStatsUI) window.renderStatsUI(); document.getElementById('stats-modal').style.display = 'flex'; });
 document.getElementById('closeStatsBtn').addEventListener('click', () => { document.getElementById('stats-modal').style.display = 'none'; });
-
-// NEW: How To Play Listeners
 document.getElementById('howToPlayBtn').addEventListener('click', () => { if (window.renderHowToPlay) window.renderHowToPlay(); document.getElementById('howtoplay-modal').style.display = 'flex'; });
 document.getElementById('closeHowToPlayBtn').addEventListener('click', () => { document.getElementById('howtoplay-modal').style.display = 'none'; });
-
 
 findMatchBtn.addEventListener('click', () => { socket.emit('joinQueue', myUsername); statusDiv.innerText = 'Searching for a match... ⏳'; findMatchBtn.disabled = true; }); 
 document.getElementById('quitBtn').addEventListener('click', () => { socket.emit('quitGame'); });
@@ -74,11 +65,10 @@ document.getElementById('quitBtn').addEventListener('click', () => { socket.emit
 socket.on('matchFound', (data) => { 
     document.getElementById('private-lobby-modal').style.display = 'none'; statusDiv.innerText = `Match found! 🎯`; gameSection.classList.add('fade-out'); 
     const rScreen = document.getElementById('roulette-screen'); const rStrip = document.getElementById('roulette-strip');
-    const gamesList = ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Checkers', 'Crazy Eights', 'Rummy'];
+    const gamesList = ['Super Tic-Tac-Toe', 'Endless Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Checkers', 'Crazy Eights', 'Rummy'];
     let stripHTML = ''; for(let i=0; i<30; i++) { stripHTML += `<div class="roulette-item">${gamesList[Math.floor(Math.random() * gamesList.length)]}</div>`; }
     stripHTML += `<div class="roulette-item" style="color: var(--primary);">${data.game}</div>`;
     rStrip.innerHTML = stripHTML; rScreen.style.display = 'flex';
-    
     rStrip.style.transition = 'none'; rStrip.style.transform = 'translateY(0)'; 
     setTimeout(() => { rStrip.style.transition = 'transform 3.5s cubic-bezier(0.15, 0.85, 0.3, 1)'; rStrip.style.transform = `translateY(-${30 * 120}px)`; }, 50);
 });
@@ -91,11 +81,13 @@ socket.on('updateLobbyPlayers', (players) => { document.getElementById('lobbyPla
 document.getElementById('sendChatBtn').addEventListener('click', () => { const text = document.getElementById('chatInput').value; if (text && myPrivateCode) { socket.emit('sendPrivateChat', { code: myPrivateCode, message: text, username: myUsername }); document.getElementById('chatInput').value = ''; } }); socket.on('updatePrivateChat', (msg) => { const chatBox = document.getElementById('chat-box'); chatBox.innerHTML += `<div class="chat-msg"><span>${msg.username}:</span> ${msg.text}</div>`; chatBox.scrollTop = chatBox.scrollHeight; });
 document.getElementById('startPrivateBtn').addEventListener('click', () => { socket.emit('startPrivateGame', { code: myPrivateCode, gameSelection: document.getElementById('gameSelector').value }); }); document.getElementById('leaveLobbyBtn').addEventListener('click', () => location.reload());
 
+// UPDATED: Checkers now uses 4 rows
 for (let i = 0; i < 9; i++) { const macroCell = document.createElement('div'); macroCell.className = 'macro-cell'; macroCell.id = `macro-${i}`; for (let j = 0; j < 9; j++) { const microCell = document.createElement('div'); microCell.className = 'micro-cell'; microCell.id = `micro-${i}-${j}`; microCell.onclick = () => { if (currentGameType === 'Super Tic-Tac-Toe') socket.emit('makeMove', { roomName: currentRoom, macroIndex: i, microIndex: j }); }; macroCell.appendChild(microCell); } stttBoard.appendChild(macroCell); }
+for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const cell = document.createElement('div'); cell.className = 'ttt-cell'; cell.id = `ttt-${r}-${c}`; cell.onclick = () => { if (currentGameType === 'Endless Tic-Tac-Toe') socket.emit('makeTTTEndlessMove', { roomName: currentRoom, r, c }); }; tttBoard.appendChild(cell); } }
 for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = document.createElement('div'); cell.className = 'c4-cell'; cell.id = `c4-${r}-${c}`; cell.onclick = () => { if (currentGameType === 'Connect 4') socket.emit('makeC4Move', { roomName: currentRoom, col: c }); }; c4Board.appendChild(cell); } }
 for (let r = 0; r < 7; r++) { for (let c = 0; c < 7; c++) { const div = document.createElement('div'); if (r % 2 === 0 && c % 2 === 0) div.className = 'dab-dot'; else if (r % 2 === 0 && c % 2 !== 0) { div.className = 'dab-hline'; const hRow = r / 2; const hCol = Math.floor(c / 2); div.id = `h-${hRow}-${hCol}`; div.onclick = () => { if (currentGameType === 'Dots and Boxes') socket.emit('makeDABMove', { roomName: currentRoom, type: 'h', r: hRow, c: hCol }); }; } else if (r % 2 !== 0 && c % 2 === 0) { div.className = 'dab-vline'; const vRow = Math.floor(r / 2); const vCol = c / 2; div.id = `v-${vRow}-${vCol}`; div.onclick = () => { if (currentGameType === 'Dots and Boxes') socket.emit('makeDABMove', { roomName: currentRoom, type: 'v', r: vRow, c: vCol }); }; } else { div.className = 'dab-box'; div.id = `box-${Math.floor(r / 2)}-${Math.floor(c / 2)}`; } dabBoard.appendChild(div); } }
 for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const myCell = document.createElement('div'); myCell.className = 'bs-cell'; myCell.id = `bs-my-${r}-${c}`; bsMyBoard.appendChild(myCell); const targetCell = document.createElement('div'); targetCell.className = 'bs-cell'; targetCell.id = `bs-target-${r}-${c}`; targetCell.onclick = () => { if (currentGameType === 'Battleship') socket.emit('makeBattleshipMove', { roomName: currentRoom, r, c }); }; bsTrackingBoard.appendChild(targetCell); } }
-for (let r = 0; r < 8; r++) { for (let c = 0; c < 8; c++) { const cell = document.createElement('div'); cell.id = `chk-${r}-${c}`; if ((r + c) % 2 === 0) cell.className = 'chk-cell chk-light'; else { cell.className = 'chk-cell chk-dark'; cell.onclick = () => { if (currentGameType !== 'Checkers' || !lastChkGame || lastChkGame.turn !== mySymbol) return; if (chkSelected) { if (chkSelected.r === r && chkSelected.c === c) { chkSelected = null; updateChkUI(lastChkGame); return; } socket.emit('makeCheckersMove', { roomName: currentRoom, fromR: chkSelected.r, fromC: chkSelected.c, toR: r, toC: c }); chkSelected = null; } else { const p = lastChkGame.board[r][c]; if ((mySymbol === 'Red' && (p === 1 || p === 3)) || (mySymbol === 'Black' && (p === 2 || p === 4))) { chkSelected = {r, c}; updateChkUI(lastChkGame); } } }; } chkBoard.appendChild(cell); } }
+for (let r = 0; r < 4; r++) { for (let c = 0; c < 8; c++) { const cell = document.createElement('div'); cell.id = `chk-${r}-${c}`; if ((r + c) % 2 === 0) cell.className = 'chk-cell chk-light'; else { cell.className = 'chk-cell chk-dark'; cell.onclick = () => { if (currentGameType !== 'Checkers' || !lastChkGame || lastChkGame.turn !== mySymbol) return; if (chkSelected) { if (chkSelected.r === r && chkSelected.c === c) { chkSelected = null; updateChkUI(lastChkGame); return; } socket.emit('makeCheckersMove', { roomName: currentRoom, fromR: chkSelected.r, fromC: chkSelected.c, toR: r, toC: c }); chkSelected = null; } else { const p = lastChkGame.board[r][c]; if ((mySymbol === 'Red' && (p === 1 || p === 3)) || (mySymbol === 'Black' && (p === 2 || p === 4))) { chkSelected = {r, c}; updateChkUI(lastChkGame); } } }; } chkBoard.appendChild(cell); } }
 
 socket.on('startGame', (gameState) => {
     currentRoom = gameState.roomName; currentGameType = gameState.gameType; mySymbol = gameState.players[socket.id]; isPrivateGame = gameState.isPrivate; 
@@ -107,16 +99,17 @@ socket.on('startGame', (gameState) => {
     if (currentGameType === 'Connect 4') roleDisplay.innerHTML = `You are playing as: <strong>${mySymbol === 'Red' ? '🔴 Red' : '🟡 Yellow'}</strong>`;
     else if (currentGameType === 'Dots and Boxes') roleDisplay.innerHTML = `You are playing as: <strong>${mySymbol === 'Red' ? '🔴 Red' : '🔵 Blue'}</strong>`;
     else if (currentGameType === 'Checkers') roleDisplay.innerHTML = `You are playing as: <strong>${mySymbol === 'Red' ? '🔴 Red' : '⚫ Black'}</strong>`;
-    else if (currentGameType === 'Super Tic-Tac-Toe') roleDisplay.innerHTML = `You are playing as: <strong style="color: ${mySymbol === 'X' ? 'var(--primary)' : 'var(--secondary)'};">${mySymbol}</strong>`;
+    else if (currentGameType === 'Super Tic-Tac-Toe' || currentGameType === 'Endless Tic-Tac-Toe') roleDisplay.innerHTML = `You are playing as: <strong style="color: ${mySymbol === 'X' ? 'var(--primary)' : 'var(--secondary)'};">${mySymbol}</strong>`;
     else if (currentGameType === 'Battleship') roleDisplay.innerHTML = `You are Commander <strong>${mySymbol}</strong>`;
     else if (currentGameType === 'Crazy Eights' || currentGameType === 'Rummy') roleDisplay.innerHTML = `You are <strong>${mySymbol}</strong>`;
 
     document.getElementById('roulette-screen').style.display = 'none'; 
     gameSection.style.display = 'none'; gameSection.classList.remove('fade-out'); playSection.style.display = 'block'; playSection.classList.add('fade-in');
     
-    stttContainer.style.display = 'none'; c4Container.style.display = 'none'; dabContainer.style.display = 'none'; bsContainer.style.display = 'none'; chkContainer.style.display = 'none'; c8Container.style.display = 'none'; rmContainer.style.display = 'none';
+    stttContainer.style.display = 'none'; tttContainer.style.display = 'none'; c4Container.style.display = 'none'; dabContainer.style.display = 'none'; bsContainer.style.display = 'none'; chkContainer.style.display = 'none'; c8Container.style.display = 'none'; rmContainer.style.display = 'none';
 
     if (currentGameType === 'Super Tic-Tac-Toe') { stttContainer.style.display = 'block'; updateSTTTUI(gameState); } 
+    else if (currentGameType === 'Endless Tic-Tac-Toe') { tttContainer.style.display = 'block'; updateTTTEndlessUI(gameState); } 
     else if (currentGameType === 'Connect 4') { c4Container.style.display = 'block'; updateC4UI(gameState); } 
     else if (currentGameType === 'Dots and Boxes') { dabContainer.style.display = 'block'; updateDABUI(gameState); }
     else if (currentGameType === 'Checkers') { chkContainer.style.display = 'block'; chkSelected = null; updateChkUI(gameState); }
@@ -125,12 +118,46 @@ socket.on('startGame', (gameState) => {
     else if (currentGameType === 'Rummy') { rmContainer.style.display = 'flex'; turnDisplay.innerText = "Dealing cards..."; }
 });
 
+socket.on('updateTTTEndlessBoard', updateTTTEndlessUI);
+function updateTTTEndlessUI(game) {
+    turnDisplay.innerText = game.turn === mySymbol ? "🎯 Your Turn!" : "⏳ Opponent's Turn...";
+    turnDisplay.style.color = game.turn === mySymbol ? "var(--primary)" : "var(--secondary)";
+
+    for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+            const cell = document.getElementById(`ttt-${r}-${c}`);
+            cell.innerHTML = '';
+            cell.className = 'ttt-cell'; 
+            if (game.board[r][c]) {
+                const isX = game.board[r][c] === 'X';
+                cell.innerHTML = `<span class="${isX ? 'mark-x' : 'mark-o'}">${game.board[r][c]}</span>`;
+            }
+        }
+    }
+
+    if (game.history['X'].length === 3) {
+        let oldestX = game.history['X'][0];
+        const span = document.getElementById(`ttt-${oldestX.r}-${oldestX.c}`).querySelector('span');
+        if (span) span.classList.add('flicker-piece');
+    }
+    if (game.history['O'].length === 3) {
+        let oldestO = game.history['O'][0];
+        const span = document.getElementById(`ttt-${oldestO.r}-${oldestO.c}`).querySelector('span');
+        if (span) span.classList.add('flicker-piece');
+    }
+
+    if (game.winLine) {
+        game.winLine.forEach(([r, c]) => {
+            document.getElementById(`ttt-${r}-${c}`).classList.add('sttt-win-pulse');
+        });
+    }
+}
+
 function randomizeBattleship() { localBattleshipBoard = Array(10).fill(null).map(() => Array(10).fill(0)); const ships = [5, 4, 3, 3, 2]; for (let shipLen of ships) { let placed = false; while (!placed) { const isHoriz = Math.random() > 0.5; const r = Math.floor(Math.random() * (isHoriz ? 10 : 10 - shipLen)); const c = Math.floor(Math.random() * (isHoriz ? 10 - shipLen : 10)); let canPlace = true; for (let i = 0; i < shipLen; i++) { if (isHoriz && localBattleshipBoard[r][c + i] !== 0) canPlace = false; if (!isHoriz && localBattleshipBoard[r + i][c] !== 0) canPlace = false; } if (canPlace) { for (let i = 0; i < shipLen; i++) { if (isHoriz) localBattleshipBoard[r][c + i] = 1; else localBattleshipBoard[r + i][c] = 1; } placed = true; } } } drawLocalBattleship(); }
 function drawLocalBattleship() { for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const cell = document.getElementById(`bs-my-${r}-${c}`); cell.className = localBattleshipBoard[r][c] === 1 ? 'bs-cell bs-ship' : 'bs-cell'; } } }
 document.getElementById('bs-randomize-btn').addEventListener('click', randomizeBattleship); document.getElementById('bs-ready-btn').addEventListener('click', () => { document.getElementById('bs-setup-menu').style.display = 'none'; socket.emit('submitBattleshipBoard', { roomName: currentRoom, board: localBattleshipBoard }); });
 socket.on('battleshipWaiting', () => { turnDisplay.innerText = "Waiting for opponent to ready up..."; turnDisplay.style.color = "var(--secondary)"; }); socket.on('battleshipStartPlaying', (data) => { turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn to Fire!" : "⏳ Incoming Fire..."; turnDisplay.style.color = data.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; });
 socket.on('updateBattleshipBoard', (data) => { turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn to Fire!" : "⏳ Incoming Fire..."; turnDisplay.style.color = data.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const myCell = document.getElementById(`bs-my-${r}-${c}`); if (data.myBoard[r][c] === 1) myCell.className = 'bs-cell bs-ship'; else if (data.myBoard[r][c] === 2) { myCell.className = 'bs-cell bs-miss'; myCell.innerText = '•'; } else if (data.myBoard[r][c] === 3) { myCell.className = 'bs-cell bs-hit'; myCell.innerText = 'X'; } const targetCell = document.getElementById(`bs-target-${r}-${c}`); if (data.trackingBoard[r][c] === 0) { targetCell.className = 'bs-cell'; targetCell.innerText = ''; } else if (data.trackingBoard[r][c] === 2) { targetCell.className = 'bs-cell bs-miss'; targetCell.innerText = '•'; } else if (data.trackingBoard[r][c] === 3) { targetCell.className = 'bs-cell bs-hit'; targetCell.innerText = 'X'; } } } });
-
 socket.on('revealBattleship', (secretBoards) => { const opponentId = Object.keys(secretBoards).find(id => id !== socket.id); const opponentBoard = secretBoards[opponentId]; for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const targetCell = document.getElementById(`bs-target-${r}-${c}`); if (opponentBoard[r][c] === 1 && !targetCell.classList.contains('bs-hit')) { targetCell.className = 'bs-cell bs-ship-revealed'; targetCell.innerText = '🚢'; } } } });
 
 socket.on('updateBoard', updateSTTTUI);
@@ -153,7 +180,30 @@ function updateSTTTUI(game) {
 
 socket.on('updateC4Board', (game) => { turnDisplay.innerText = game.turn === mySymbol ? "🔴 Your Turn!" : "🟡 Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? (mySymbol==='Red'?'var(--primary)':'var(--accent)') : (mySymbol==='Red'?'var(--accent)':'var(--primary)'); document.querySelectorAll('.c4-cell').forEach(c => c.classList.remove('c4-win-pulse')); for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = document.getElementById(`c4-${r}-${c}`); if (game.board[r][c] === 'Red' && !cell.classList.contains('c4-red')) cell.className = 'c4-cell c4-red'; else if (game.board[r][c] === 'Yellow' && !cell.classList.contains('c4-yellow')) cell.className = 'c4-cell c4-yellow'; } } if (game.winLine) { game.winLine.forEach(([r, c]) => { document.getElementById(`c4-${r}-${c}`).classList.add('c4-win-pulse'); }); } });
 socket.on('updateDABBoard', (game) => { turnDisplay.innerText = game.turn === mySymbol ? (mySymbol==='Red'?'🔴 Your Turn!':'🔵 Your Turn!') : "⏳ Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? (mySymbol==='Red'?'var(--primary)':'var(--secondary)') : (mySymbol==='Red'?'var(--secondary)':'var(--primary)'); document.getElementById('dab-score-red').innerText = game.scores['Red']; document.getElementById('dab-score-blue').innerText = game.scores['Blue']; for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const hLine = document.getElementById(`h-${r}-${c}`); if (game.hLines[r][c] === 'Red') hLine.className = 'dab-hline dab-line-red'; else if (game.hLines[r][c] === 'Blue') hLine.className = 'dab-hline dab-line-blue'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const vLine = document.getElementById(`v-${r}-${c}`); if (game.vLines[r][c] === 'Red') vLine.className = 'dab-vline dab-line-red'; else if (game.vLines[r][c] === 'Blue') vLine.className = 'dab-vline dab-line-blue'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const box = document.getElementById(`box-${r}-${c}`); if (game.boxes[r][c] === 'Red') { box.className = 'dab-box dab-box-red'; box.innerText = 'R'; } else if (game.boxes[r][c] === 'Blue') { box.className = 'dab-box dab-box-blue'; box.innerText = 'B'; } } } });
-socket.on('updateCheckersBoard', updateChkUI); function updateChkUI(game) { lastChkGame = game; turnDisplay.innerText = game.turn === mySymbol ? (game.multiJumping ? "🔄 Double Jump Available!" : "🎯 Your Turn!") : "⏳ Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; if (game.multiJumping && game.turn === mySymbol) { chkSelected = { r: game.multiJumping.r, c: game.multiJumping.c }; } else if (game.turn !== mySymbol) { chkSelected = null; } for (let r = 0; r < 8; r++) { for (let c = 0; c < 8; c++) { if ((r + c) % 2 === 0) continue; const cell = document.getElementById(`chk-${r}-${c}`); cell.innerHTML = ''; const p = game.board[r][c]; if (p !== 0) { const pieceDiv = document.createElement('div'); pieceDiv.className = `chk-piece ${p === 1 || p === 3 ? 'chk-red' : 'chk-black'}`; if (chkSelected && chkSelected.r === r && chkSelected.c === c) pieceDiv.classList.add('chk-selected'); if (p === 3 || p === 4) pieceDiv.innerText = '👑'; cell.appendChild(pieceDiv); } } } }
+
+// UPDATED: Checkers scans 4 rows for updates
+socket.on('updateCheckersBoard', updateChkUI); 
+function updateChkUI(game) { 
+    lastChkGame = game; 
+    turnDisplay.innerText = game.turn === mySymbol ? (game.multiJumping ? "🔄 Double Jump Available!" : "🎯 Your Turn!") : "⏳ Opponent's Turn..."; 
+    turnDisplay.style.color = game.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; 
+    if (game.multiJumping && game.turn === mySymbol) { chkSelected = { r: game.multiJumping.r, c: game.multiJumping.c }; } else if (game.turn !== mySymbol) { chkSelected = null; } 
+    for (let r = 0; r < 4; r++) { 
+        for (let c = 0; c < 8; c++) { 
+            if ((r + c) % 2 === 0) continue; 
+            const cell = document.getElementById(`chk-${r}-${c}`); 
+            cell.innerHTML = ''; 
+            const p = game.board[r][c]; 
+            if (p !== 0) { 
+                const pieceDiv = document.createElement('div'); 
+                pieceDiv.className = `chk-piece ${p === 1 || p === 3 ? 'chk-red' : 'chk-black'}`; 
+                if (chkSelected && chkSelected.r === r && chkSelected.c === c) pieceDiv.classList.add('chk-selected'); 
+                if (p === 3 || p === 4) pieceDiv.innerText = '👑'; 
+                cell.appendChild(pieceDiv); 
+            } 
+        } 
+    } 
+}
 
 c8Deck.onclick = () => { if (currentGameType === 'Crazy Eights') socket.emit('makeC8Draw', { roomName: currentRoom }); };
 window.selectC8Suit = function(suit) { document.getElementById('c8-suit-modal').style.display = 'none'; socket.emit('makeC8Play', { roomName: currentRoom, cardIndex: pendingC8CardIndex, declaredSuit: suit }); pendingC8CardIndex = null; }
@@ -192,7 +242,7 @@ socket.on('updateRummy', (data) => {
     document.getElementById('rm-meld-btn').disabled = !isMyPlayPhase; document.getElementById('rm-layoff-btn').disabled = !isMyPlayPhase; document.getElementById('rm-discard-btn').disabled = !isMyPlayPhase;
 
     document.getElementById('rm-opp-count').innerText = data.opponentHandCount;
-    rmOppHand.innerHTML = ''; for(let i=0; i<data.opponentHandCount; i++) rmOppHand.innerHTML += `<div class="rm-card c8-hidden"></div>`;
+    rmOppHand.innerHTML = ''; for(let i=0; i<data.opponentHandCount; i++) rmOppHand.innerHTML += `<div class="rm-card rm-hidden"></div>`;
 
     rmMyHand.innerHTML = '';
     data.myHand.forEach((card, index) => {
@@ -228,6 +278,10 @@ socket.on('gameOverScreen', (data) => {
     const amIWinner = data.winnerId === socket.id; const amILoser = data.loserId === socket.id; 
     if (currentGameType && (amIWinner || amILoser || data.isTie)) { if (window.recordGameResult) window.recordGameResult(currentGameType, amIWinner, data.isTie); }
     currentGameType = null; const title = document.getElementById('go-title'); const msg = document.getElementById('go-message'); const points = document.getElementById('go-points'); const modal = document.getElementById('game-over-modal'); const playersContainer = document.getElementById('go-players-container'); 
+    
+    const rummyScoresDiv = document.getElementById('go-rummy-scores');
+    if (data.rummyScores && !data.isQuit) { rummyScoresDiv.style.display = 'block'; rummyScoresDiv.innerHTML = `Final Match Scores:<br>Player 1: ${data.rummyScores['Player 1']} pts | Player 2: ${data.rummyScores['Player 2']} pts`; } else { rummyScoresDiv.style.display = 'none'; }
+
     if (data.isTie) { title.innerText = "It's a Tie! 🤝"; title.className = "win-text"; msg.innerText = "Good game!"; points.innerText = "+0 Points"; points.className = ""; playersContainer.style.display = 'none';
     } else { 
         playersContainer.style.display = 'flex'; title.innerText = amIWinner ? "Victory! 🏆" : "Defeat! 💀"; title.className = amIWinner ? "win-text" : "lose-text"; msg.innerText = data.isQuit ? (amIWinner ? "Your opponent fled!" : "You quit the game!") : (amIWinner ? "You crushed them!" : "Better luck next time."); points.innerText = amIWinner ? `+${data.pointsWon} Points` : `-${data.pointsLost} Points`; points.className = amIWinner ? "win-text" : "lose-text"; 
@@ -242,9 +296,13 @@ document.getElementById('returnToResultsBtn').addEventListener('click', () => { 
 
 function resetBoardUI() {
     stttBoard.innerHTML = ''; for (let i = 0; i < 9; i++) { const macroCell = document.createElement('div'); macroCell.className = 'macro-cell'; macroCell.id = `macro-${i}`; for (let j = 0; j < 9; j++) { const microCell = document.createElement('div'); microCell.className = 'micro-cell'; microCell.id = `micro-${i}-${j}`; microCell.onclick = () => { if (currentGameType === 'Super Tic-Tac-Toe') socket.emit('makeMove', { roomName: currentRoom, macroIndex: i, microIndex: j }); }; macroCell.appendChild(microCell); } stttBoard.appendChild(macroCell); }
+    tttBoard.innerHTML = ''; for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const cell = document.createElement('div'); cell.className = 'ttt-cell'; cell.id = `ttt-${r}-${c}`; cell.onclick = () => { if (currentGameType === 'Endless Tic-Tac-Toe') socket.emit('makeTTTEndlessMove', { roomName: currentRoom, r, c }); }; tttBoard.appendChild(cell); } }
     for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { document.getElementById(`c4-${r}-${c}`).className = 'c4-cell'; } }
     for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const h = document.getElementById(`h-${r}-${c}`); if(h) h.className = 'dab-hline'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const v = document.getElementById(`v-${r}-${c}`); if(v) v.className = 'dab-vline'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const b = document.getElementById(`box-${r}-${c}`); if(b) { b.className = 'dab-box'; b.innerText = ''; } } } document.getElementById('dab-score-red').innerText = '0'; document.getElementById('dab-score-blue').innerText = '0';
     for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const m = document.getElementById(`bs-my-${r}-${c}`); if(m) { m.className = 'bs-cell'; m.innerText = ''; } const t = document.getElementById(`bs-target-${r}-${c}`); if(t) { t.className = 'bs-cell'; t.innerText = ''; } } }
+    
+    // UPDATED: Checkers reset loops up to 4 now!
+    for (let r = 0; r < 4; r++) { for (let c = 0; c < 8; c++) { const cell = document.getElementById(`chk-${r}-${c}`); if(cell) cell.innerHTML = ''; } }
     
     c8MyHand.innerHTML = ''; c8OppHand.innerHTML = ''; c8Discard.innerHTML = ''; c8ActiveSuit.innerText = ''; document.getElementById('c8-suit-modal').style.display = 'none'; lastTopCardStr = ""; 
     rmMyHand.innerHTML = ''; rmOppHand.innerHTML = ''; rmDiscardPile.innerHTML = ''; rmMeldArea.innerHTML = ''; rummySelectedIndices = []; rummySelectedMeldId = null;

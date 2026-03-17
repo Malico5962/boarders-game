@@ -5,6 +5,11 @@ const gameInstructions = [
         desc: "It's a game of inception! The board is made of 9 small Tic-Tac-Toe boards. <b>The catch:</b> Wherever you play in a small board determines which small board your opponent is forced to play in next! Win a small board by getting 3 in a row. Win the entire game by winning 3 small boards in a row."
     },
     {
+        name: "Endless Tic-Tac-Toe",
+        icon: "♾️",
+        desc: "A chaotic twist on the classic! Standard Tic-Tac-Toe rules apply (get 3 in a row), BUT you can only have 3 pieces on the board at a time. When you place your 4th piece, your oldest piece disappears! Watch for the <b>flickering piece</b>—that's the one about to vanish on your next turn."
+    },
+    {
         name: "Connect 4",
         icon: "🔴",
         desc: "A true classic. Take turns dropping your colored discs into the grid. The first player to connect 4 of their discs in a row—whether horizontally, vertically, or diagonally—wins the game!"

@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express'); const http = require('http'); const { Server } = require('socket.io'); const path = require('path'); const bcrypt = require('bcryptjs'); const mongoose = require('mongoose'); 
 
 const stttLogic = require('./games/superTicTacToe'); const c4Logic = require('./games/connect4'); const dabLogic = require('./games/dotsAndBoxes'); const bsLogic = require('./games/battleship'); const chkLogic = require('./games/checkers');
-const rankLogic = require('./games/rank'); const c8Logic = require('./games/crazyEights'); const rummyLogic = require('./games/rummy');
+const rankLogic = require('./games/rank'); const c8Logic = require('./games/crazyEights'); const rummyLogic = require('./games/rummy'); const tttLogic = require('./games/ticTacToe');
 
 const app = express(); const server = http.createServer(app); const io = new Server(server);
 app.use(express.json()); app.use(express.static(path.join(__dirname, 'public')));
@@ -34,7 +34,7 @@ async function handleGameEnd(roomName, winnerId, loserId, isQuit = false) {
         } catch (err) { console.error("DB Error", err); } 
     } 
     const isPrivate = game.privateCode != null; if (!isPrivate) { if (winnerData?.isAnon) winnerData = { username: 'Anonymous', pfp: 'https://api.dicebear.com/7.x/identicon/svg?seed=Anon' }; if (loserData?.isAnon) loserData = { username: 'Anonymous', pfp: 'https://api.dicebear.com/7.x/identicon/svg?seed=Anon' }; }
-    io.to(roomName).emit('gameOverScreen', { winnerId, loserId, isQuit, isTie: !winnerId && !loserId, newWinnerRank, newLoserRank, winnerData, loserData, pointsWon, pointsLost }); delete activeGames[roomName]; 
+    io.to(roomName).emit('gameOverScreen', { winnerId, loserId, isQuit, isTie: !winnerId && !loserId, newWinnerRank, newLoserRank, winnerData, loserData, pointsWon, pointsLost, rummyScores: game.rummyScores }); delete activeGames[roomName]; 
 }
 
 async function initializeGame(roomName, chosenGame, player1, player2, privateCode = null) {
@@ -53,20 +53,24 @@ async function initializeGame(roomName, chosenGame, player1, player2, privateCod
         } else if (chosenGame === 'Connect 4') { game.players = { [player1.id]: 'Red', [player2.id]: 'Yellow' }; game.board = Array(6).fill(null).map(() => Array(7).fill(null)); game.turn = 'Red'; safeGameState.players = game.players; safeGameState.board = game.board; safeGameState.turn = game.turn;
         } else if (chosenGame === 'Dots and Boxes') { game.players = { [player1.id]: 'Red', [player2.id]: 'Blue' }; game.hLines = Array(4).fill(null).map(() => Array(3).fill(null)); game.vLines = Array(3).fill(null).map(() => Array(4).fill(null)); game.boxes = Array(3).fill(null).map(() => Array(3).fill(null)); game.scores = { 'Red': 0, 'Blue': 0 }; game.turn = 'Red'; safeGameState.players = game.players; safeGameState.hLines = game.hLines; safeGameState.vLines = game.vLines; safeGameState.boxes = game.boxes; safeGameState.scores = game.scores; safeGameState.turn = game.turn;
         } else if (chosenGame === 'Battleship') { game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; game.phase = 'setup'; game.ready = { [player1.id]: false, [player2.id]: false }; game.secretBoards = { [player1.id]: null, [player2.id]: null }; game.trackingBoards = { [player1.id]: Array(10).fill(null).map(()=>Array(10).fill(0)), [player2.id]: Array(10).fill(null).map(()=>Array(10).fill(0)) }; game.health = { [player1.id]: 17, [player2.id]: 17 }; game.turn = 'Player 1'; safeGameState.players = game.players; safeGameState.phase = game.phase;
-        } else if (chosenGame === 'Checkers') { game.players = { [player1.id]: 'Red', [player2.id]: 'Black' }; game.turn = 'Red'; game.redCount = 12; game.blackCount = 12; game.board = Array(8).fill(null).map(() => Array(8).fill(0)); for (let r=0; r<8; r++) { for (let c=0; c<8; c++) { if ((r+c)%2 !== 0) { if (r < 3) game.board[r][c] = 1; else if (r > 4) game.board[r][c] = 2; } } } safeGameState.players = game.players; safeGameState.board = game.board; safeGameState.turn = game.turn; 
         } else if (chosenGame === 'Crazy Eights') { game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; game.turn = 'Player 1'; game.activeSuit = null; const suits = ['♥', '♦', '♣', '♠']; const values = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']; game.deck = []; suits.forEach(s => values.forEach(v => game.deck.push({suit: s, val: v}))); game.deck.sort(() => Math.random() - 0.5); game.hands = { [player1.id]: game.deck.splice(0, 7), [player2.id]: game.deck.splice(0, 7) }; game.discardPile = [game.deck.pop()]; while(game.discardPile[0].val === '8') { game.deck.unshift(game.discardPile.pop()); game.discardPile = [game.deck.pop()]; } safeGameState.players = game.players; safeGameState.turn = game.turn;
-        } else if (chosenGame === 'Rummy') { 
-            game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; 
-            game.turn = 'Player 1'; 
-            game.phase = 'draw'; 
-            game.melds = []; 
-            const suits = ['♥', '♦', '♣', '♠']; const values = ['A','2','3','4','5','6','7','8','9','10','J','Q','K']; 
-            game.deck = []; suits.forEach(s => values.forEach(v => game.deck.push({suit: s, val: v}))); 
-            game.deck.sort(() => Math.random() - 0.5); 
-            // UPDATED: Deal 5 cards instead of 10 for a faster game!
-            game.hands = { [player1.id]: game.deck.splice(0, 5), [player2.id]: game.deck.splice(0, 5) }; 
-            game.discardPile = [game.deck.pop()]; 
+        } else if (chosenGame === 'Rummy') { game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; game.turn = 'Player 1'; game.phase = 'draw'; game.melds = []; const suits = ['♥', '♦', '♣', '♠']; const values = ['A','2','3','4','5','6','7','8','9','10','J','Q','K']; game.deck = []; suits.forEach(s => values.forEach(v => game.deck.push({suit: s, val: v}))); game.deck.sort(() => Math.random() - 0.5); game.hands = { [player1.id]: game.deck.splice(0, 5), [player2.id]: game.deck.splice(0, 5) }; game.discardPile = [game.deck.pop()]; safeGameState.players = game.players; safeGameState.turn = game.turn; 
+        } else if (chosenGame === 'Endless Tic-Tac-Toe') { game.players = { [player1.id]: 'X', [player2.id]: 'O' }; game.board = Array(3).fill(null).map(() => Array(3).fill(null)); game.history = { 'X': [], 'O': [] }; game.turn = 'X'; safeGameState.players = game.players; safeGameState.board = game.board; safeGameState.history = game.history; safeGameState.turn = game.turn;
+        
+        // NEW 4x8 CHECKERS
+        } else if (chosenGame === 'Checkers') { 
+            game.players = { [player1.id]: 'Red', [player2.id]: 'Black' }; 
+            game.turn = 'Red'; 
+            game.redCount = 4; 
+            game.blackCount = 4; 
+            game.multiJumping = null; 
+            game.board = Array(4).fill(null).map(() => Array(8).fill(0)); 
+            for (let c=0; c<8; c++) { 
+                if (c % 2 !== 0) game.board[0][c] = 1; // Red on top row
+                if (c % 2 === 0) game.board[3][c] = 2; // Black on bottom row
+            } 
             safeGameState.players = game.players; 
+            safeGameState.board = game.board; 
             safeGameState.turn = game.turn; 
         }
         
@@ -84,7 +88,7 @@ io.on('connection', (socket) => {
     
     socket.on('joinQueue', (username) => { 
         socket.username = username; matchmakingQueue = matchmakingQueue.filter(p => p.id !== socket.id); matchmakingQueue.push(socket); 
-        if (matchmakingQueue.length >= 2) { const player1 = matchmakingQueue.shift(); const player2 = matchmakingQueue.shift(); const minigames = ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Checkers', 'Crazy Eights', 'Rummy']; const roomName = `room_${Date.now()}_${player1.id}_${player2.id}`; player1.join(roomName); player2.join(roomName); initializeGame(roomName, minigames[Math.floor(Math.random() * minigames.length)], player1, player2, null); } 
+        if (matchmakingQueue.length >= 2) { const player1 = matchmakingQueue.shift(); const player2 = matchmakingQueue.shift(); const minigames = ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Checkers', 'Crazy Eights', 'Rummy', 'Endless Tic-Tac-Toe']; const roomName = `room_${Date.now()}_${player1.id}_${player2.id}`; player1.join(roomName); player2.join(roomName); initializeGame(roomName, minigames[Math.floor(Math.random() * minigames.length)], player1, player2, null); } 
     });
 
     socket.on('createPrivateRoom', ({ username, code }) => { if (privateRooms[code]) return socket.emit('privateError', 'Code already exists!'); socket.username = username; privateRooms[code] = { host: socket.id, players: [socket], messages: [] }; socket.join(`private_${code}`); socket.emit('privateRoomJoined', { code, isHost: true, players: [username], messages: [] }); });
@@ -97,7 +101,7 @@ io.on('connection', (socket) => {
             const player1 = room.players[0]; const player2 = room.players[1]; 
             const roomName = `room_${Date.now()}_${player1.id}_${player2.id}`; 
             player1.join(roomName); player2.join(roomName); 
-            let chosenGame = gameSelection === 'Random' ? ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Checkers', 'Crazy Eights', 'Rummy'][Math.floor(Math.random() * 7)] : gameSelection; 
+            let chosenGame = gameSelection === 'Random' ? ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Checkers', 'Crazy Eights', 'Rummy', 'Endless Tic-Tac-Toe'][Math.floor(Math.random() * 8)] : gameSelection; 
             initializeGame(roomName, chosenGame, player1, player2, code); 
         } 
     });
@@ -110,11 +114,11 @@ io.on('connection', (socket) => {
     socket.on('makeBattleshipMove', ({ roomName, r, c }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Battleship' && game.phase === 'playing') { bsLogic.handleShot(game, socket.id, r, c); Object.keys(game.players).forEach(pId => { io.to(pId).emit('updateBattleshipBoard', { turn: game.turn, myBoard: game.secretBoards[pId], trackingBoard: game.trackingBoards[pId] }); }); if (game.winner) { io.to(roomName).emit('revealBattleship', game.secretBoards); const winnerId = Object.keys(game.players).find(id => game.players[id] === game.winner); setTimeout(() => { handleGameEnd(roomName, winnerId, Object.keys(game.players).find(id => id !== winnerId), false); }, 3500); } } });
     socket.on('makeC8Play', ({ roomName, cardIndex, declaredSuit }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Crazy Eights') { c8Logic.handlePlay(game, socket.id, cardIndex, declaredSuit); broadcastCrazyEightsState(roomName); if (game.winner) { const winnerId = Object.keys(game.players).find(id => game.players[id] === game.winner); setTimeout(() => { handleGameEnd(roomName, winnerId, Object.keys(game.players).find(id => id !== winnerId), false); }, 2000); } } });
     socket.on('makeC8Draw', ({ roomName }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Crazy Eights') { c8Logic.handleDraw(game, socket.id); broadcastCrazyEightsState(roomName); } });
-    
     socket.on('makeRummyDraw', ({ roomName, source, index }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Rummy') { rummyLogic.handleDraw(game, socket.id, source, index); broadcastRummyState(roomName); } });
     socket.on('makeRummyMeld', ({ roomName, cardIndices }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Rummy') { rummyLogic.handleMeld(game, socket.id, cardIndices); broadcastRummyState(roomName); if (game.winner) { const winnerId = Object.keys(game.players).find(id => game.players[id] === game.winner); setTimeout(() => { handleGameEnd(roomName, winnerId, Object.keys(game.players).find(id => id !== winnerId), false); }, 2000); } } });
     socket.on('makeRummyLayOff', ({ roomName, cardIndex, meldId }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Rummy') { rummyLogic.handleLayOff(game, socket.id, cardIndex, meldId); broadcastRummyState(roomName); if (game.winner) { const winnerId = Object.keys(game.players).find(id => game.players[id] === game.winner); setTimeout(() => { handleGameEnd(roomName, winnerId, Object.keys(game.players).find(id => id !== winnerId), false); }, 2000); } } });
     socket.on('makeRummyDiscard', ({ roomName, cardIndex }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Rummy') { rummyLogic.handleDiscard(game, socket.id, cardIndex); broadcastRummyState(roomName); if (game.winner) { const winnerId = Object.keys(game.players).find(id => game.players[id] === game.winner); setTimeout(() => { handleGameEnd(roomName, winnerId, Object.keys(game.players).find(id => id !== winnerId), false); }, 2000); } } });
+    socket.on('makeTTTEndlessMove', ({ roomName, r, c }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Endless Tic-Tac-Toe') { tttLogic.handleMove(game, socket.id, r, c); io.to(roomName).emit('updateTTTEndlessBoard', game); if (game.winner) { const winnerId = Object.keys(game.players).find(id => game.players[id] === game.winner); setTimeout(() => { handleGameEnd(roomName, winnerId, Object.keys(game.players).find(id => id !== winnerId), false); }, 2500); } } });
 
     socket.on('quitGame', () => { const gameEntry = Object.entries(activeGames).find(([_, g]) => g.playerUsernames && g.playerUsernames[socket.id]); if (gameEntry) { const opponentId = Object.keys(gameEntry[1].playerUsernames).find(id => id !== socket.id); handleGameEnd(gameEntry[0], opponentId, socket.id, true); } });
     socket.on('disconnect', () => { onlinePlayersCount--; io.emit('onlineCount', onlinePlayersCount); matchmakingQueue = matchmakingQueue.filter(p => p.id !== socket.id); for (const code in privateRooms) { const room = privateRooms[code]; if (room.players.find(p => p.id === socket.id)) { io.to(`private_${code}`).emit('privateError', 'A player disconnected.'); delete privateRooms[code]; } } const gameEntry = Object.entries(activeGames).find(([_, g]) => g.playerUsernames && g.playerUsernames[socket.id]); if (gameEntry) { const opponentId = Object.keys(gameEntry[1].playerUsernames).find(id => id !== socket.id); handleGameEnd(gameEntry[0], opponentId, socket.id, true); } });

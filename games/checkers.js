@@ -1,59 +1,94 @@
-module.exports = {
-    handleMove: function(game, shooterId, fromR, fromC, toR, toC) {
-        if (game.winner || game.turn !== game.players[shooterId]) return;
+function getValidJumps(board, player, r, c, isKing) {
+    let jumps = [];
+    const dirs = isKing ? [[1,1], [1,-1], [-1,1], [-1,-1]] : (player === 'Red' ? [[1,1], [1,-1]] : [[-1,1], [-1,-1]]);
+    
+    let oppM = player === 'Red' ? 2 : 1;
+    let oppK = player === 'Red' ? 4 : 3;
 
-        const piece = game.board[fromR][fromC];
-        const isRed = game.turn === 'Red';
-        
-        // 1 = Red, 2 = Black, 3 = Red King, 4 = Black King
-        if (isRed && piece !== 1 && piece !== 3) return;
-        if (!isRed && piece !== 2 && piece !== 4) return;
-        if (game.board[toR][toC] !== 0) return; // Target must be empty
+    for (let [dr, dc] of dirs) {
+        let nr = r + dr, nc = c + dc;
+        let jr = r + dr * 2, jc = c + dc * 2;
 
-        const rowDiff = toR - fromR;
-        const colDiff = toC - fromC;
-        const isKing = piece === 3 || piece === 4;
-
-        if (!isKing) {
-            if (isRed && rowDiff < 0) return; // Red moves down
-            if (!isRed && rowDiff > 0) return; // Black moves up
-        }
-
-        const isSimpleMove = Math.abs(rowDiff) === 1 && Math.abs(colDiff) === 1;
-        const isJump = Math.abs(rowDiff) === 2 && Math.abs(colDiff) === 2;
-
-        let validMove = false;
-
-        if (isSimpleMove) {
-            validMove = true;
-        } else if (isJump) {
-            const midR = fromR + rowDiff / 2;
-            const midC = fromC + colDiff / 2;
-            const midPiece = game.board[midR][midC];
-            
-            const isEnemy = isRed ? (midPiece === 2 || midPiece === 4) : (midPiece === 1 || midPiece === 3);
-            if (isEnemy) {
-                validMove = true;
-                game.board[midR][midC] = 0; // Capture!
-                if (isRed) game.blackCount--; else game.redCount--;
+        if (jr >= 0 && jr < 4 && jc >= 0 && jc < 8) { // NEW 4x8 BOUNDS
+            let mid = board[nr][nc];
+            if ((mid === oppM || mid === oppK) && board[jr][jc] === 0) {
+                jumps.push({ r: jr, c: jc });
             }
         }
+    }
+    return jumps;
+}
 
-        if (!validMove) return;
+function checkWin(game) {
+    if (game.redCount <= 0) game.winner = 'Black';
+    else if (game.blackCount <= 0) game.winner = 'Red';
+}
 
-        // Move piece
-        game.board[toR][toC] = piece;
-        game.board[fromR][fromC] = 0;
+module.exports = {
+    handleMove: function(game, playerId, fromR, fromC, toR, toC) {
+        let player = game.players[playerId];
+        if (game.winner || game.turn !== player) return;
 
-        // King promotion
-        if (isRed && toR === 7 && piece === 1) game.board[toR][toC] = 3;
-        if (!isRed && toR === 0 && piece === 2) game.board[toR][toC] = 4;
+        // FIXED: Force the player to move the specific piece if it is multi-jumping!
+        if (game.multiJumping && (game.multiJumping.r !== fromR || game.multiJumping.c !== fromC)) return;
 
-        // Pass Turn
-        game.turn = isRed ? 'Black' : 'Red';
+        let piece = game.board[fromR][fromC];
+        if (piece === 0) return;
+        
+        let isKing = (piece === 3 || piece === 4);
+        if ((player === 'Red' && piece !== 1 && piece !== 3) || (player === 'Black' && piece !== 2 && piece !== 4)) return;
 
-        // Win conditions
-        if (game.redCount === 0) game.winner = 'Black';
-        if (game.blackCount === 0) game.winner = 'Red';
+        let dr = toR - fromR;
+        let dc = toC - fromC;
+        let isJump = Math.abs(dr) === 2 && Math.abs(dc) === 2;
+        let isNormal = Math.abs(dr) === 1 && Math.abs(dc) === 1;
+
+        if (!isKing) {
+            if (player === 'Red' && dr < 0) return;
+            if (player === 'Black' && dr > 0) return;
+        }
+
+        if (isNormal && !game.multiJumping && game.board[toR][toC] === 0) {
+            game.board[toR][toC] = piece;
+            game.board[fromR][fromC] = 0;
+            
+            if (player === 'Red' && toR === 3) game.board[toR][toC] = 3;
+            if (player === 'Black' && toR === 0) game.board[toR][toC] = 4;
+
+            game.turn = player === 'Red' ? 'Black' : 'Red';
+            checkWin(game);
+            return;
+        }
+
+        if (isJump && game.board[toR][toC] === 0) {
+            let capR = fromR + dr / 2;
+            let capC = fromC + dc / 2;
+            let capPiece = game.board[capR][capC];
+            
+            let oppM = player === 'Red' ? 2 : 1;
+            let oppK = player === 'Red' ? 4 : 3;
+
+            if (capPiece === oppM || capPiece === oppK) {
+                game.board[toR][toC] = piece;
+                game.board[fromR][fromC] = 0;
+                game.board[capR][capC] = 0;
+
+                if (player === 'Red') game.blackCount--;
+                if (player === 'Black') game.redCount--;
+
+                let kinged = false;
+                if (player === 'Red' && toR === 3 && piece === 1) { game.board[toR][toC] = 3; kinged = true; isKing = true; }
+                if (player === 'Black' && toR === 0 && piece === 2) { game.board[toR][toC] = 4; kinged = true; isKing = true; }
+
+                let moreJumps = getValidJumps(game.board, player, toR, toC, isKing);
+                if (moreJumps.length > 0 && !kinged) {
+                    game.multiJumping = { r: toR, c: toC }; // Keeps the turn!
+                } else {
+                    game.multiJumping = null; // Ends the turn
+                    game.turn = player === 'Red' ? 'Black' : 'Red';
+                }
+                checkWin(game);
+            }
+        }
     }
 };
