@@ -28,6 +28,12 @@ function injectSideMenuUI() {
 
             <div style="flex-grow: 1; display: flex; flex-direction: column; background: white; border-radius: 20px; border: 2px solid #dfe6e9; padding: 15px; overflow: hidden;">
                 <h3 style="margin-top:0; color: var(--text);">In-Game Chat</h3>
+                
+                <div style="margin-bottom: 10px; text-align: left;">
+                    <div style="font-size: 0.85rem; font-weight: 900; color: var(--text); margin-bottom: 5px;">Flash Emoji:</div>
+                    <div id="emojiGrid" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                </div>
+
                 <div id="inGameChatBox" style="flex-grow: 1; overflow-y: auto; text-align: left; margin-bottom: 10px; font-size: 0.95rem;"></div>
                 <div style="display: flex; gap: 5px;">
                     <input type="text" id="inGameChatInput" placeholder="Aa" style="width: 70%; margin: 0; padding: 10px;">
@@ -50,10 +56,8 @@ function injectSideMenuUI() {
     document.body.insertAdjacentHTML('beforeend', sideMenuHTML);
 }
 
-// Initialize the UI elements immediately
 injectSideMenuUI();
 
-// 2. Setup Logic & Listeners
 let isMenuOpen = false;
 let pendingRequestAmount = 0;
 
@@ -62,13 +66,39 @@ document.getElementById('toggleSideMenuBtn').addEventListener('click', () => {
     document.getElementById('gameSideMenu').style.right = isMenuOpen ? '0px' : '-400px';
 });
 
-// Called from app.js when a game starts
+// Render Emojis from Inventory
+window.populateEmojis = function() {
+    const grid = document.getElementById('emojiGrid');
+    grid.innerHTML = '';
+    if (!myUserObj || !window.SHOP_CATALOG) return;
+    
+    const ownedEmojis = window.SHOP_CATALOG.filter(i => i.type === 'emoji' && myUserObj.inventory && myUserObj.inventory.includes(i.id));
+    
+    if (ownedEmojis.length === 0) {
+        grid.innerHTML = '<span style="font-size:0.8rem; color:#a4b0be;">No emojis owned. Visit the Shop!</span>';
+        return;
+    }
+
+    ownedEmojis.forEach(em => {
+        const btn = document.createElement('button');
+        btn.innerText = em.icon;
+        btn.style.cssText = 'font-size: 1.5rem; padding: 5px; margin: 0; background: #f1f2f6; box-shadow: 0 4px 0 #dfe6e9; border-radius: 10px; cursor: pointer; transition: transform 0.1s;';
+        btn.onclick = () => {
+            if (currentRoom) {
+                socket.emit('sendEmoji', { roomName: currentRoom, emoji: em.icon });
+                btn.disabled = true;
+                setTimeout(() => { btn.disabled = false; }, 2000);
+            }
+        };
+        grid.appendChild(btn);
+    });
+};
+
 window.initBuckPool = function(myBucks, oppBucks) {
     currentPool = 0;
     myCurrentBucks = myBucks;
     oppCurrentBucks = oppBucks;
     
-    // Limit is 100, OR the lowest balance between the two players
     maxAllocation = Math.min(myBucks, oppBucks, 100);
     
     document.getElementById('myBucksDisplay').innerText = myCurrentBucks;
@@ -78,16 +108,15 @@ window.initBuckPool = function(myBucks, oppBucks) {
     document.getElementById('inGameChatBox').innerHTML = '<div style="color: #a4b0be; font-style: italic;">Match started. GLHF!</div>';
     
     document.getElementById('toggleSideMenuBtn').style.display = 'block';
+    window.populateEmojis(); 
 };
 
-// Hide the menu when game ends
 window.hideBuckPool = function() {
     isMenuOpen = false;
     document.getElementById('gameSideMenu').style.right = '-400px';
     document.getElementById('toggleSideMenuBtn').style.display = 'none';
 };
 
-// 3. Button Listeners
 document.getElementById('requestAllocateBtn').addEventListener('click', () => {
     const amt = parseInt(document.getElementById('allocateInput').value);
     if (isNaN(amt) || amt <= 0) return;
@@ -97,7 +126,6 @@ document.getElementById('requestAllocateBtn').addEventListener('click', () => {
         return;
     }
 
-    // Send request to server
     socket.emit('requestAllocation', { roomName: currentRoom, amount: amt });
     document.getElementById('allocateStatus').innerText = "Request sent... Waiting for response.";
     document.getElementById('allocateInput').value = '';
@@ -113,7 +141,6 @@ document.getElementById('denyAllocateBtn').addEventListener('click', () => {
     socket.emit('respondAllocation', { roomName: currentRoom, accept: false });
 });
 
-// In-Game Chat
 document.getElementById('sendInGameChatBtn').addEventListener('click', () => {
     const msg = document.getElementById('inGameChatInput').value;
     if (msg && currentRoom) {
@@ -126,7 +153,6 @@ document.getElementById('inGameChatInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') document.getElementById('sendInGameChatBtn').click();
 });
 
-// 4. Socket Listeners
 socket.on('allocationRequested', (amount) => {
     pendingRequestAmount = amount;
     document.getElementById('requestAmountDisplay').innerText = amount;
