@@ -11,7 +11,16 @@ const tttContainer = document.getElementById('ttt-container'); const tttBoard = 
 const c4Container = document.getElementById('c4-container'); const c4Board = document.getElementById('c4-board');
 const dabContainer = document.getElementById('dab-container'); const dabBoard = document.getElementById('dab-board');
 const bsContainer = document.getElementById('bs-container'); const bsMyBoard = document.getElementById('bs-my-board'); const bsTrackingBoard = document.getElementById('bs-tracking-board');
-const chkContainer = document.getElementById('chk-container'); const chkBoard = document.getElementById('chk-board');
+
+// NEW: MINI CHESS
+const mcContainer = document.getElementById('mc-container'); const mcBoard = document.getElementById('mc-board');
+let mcSelected = null; let lastChessGame = null;
+const chessIcons = { 1: '♚\uFE0E', 2: '♛\uFE0E', 3: '♝\uFE0E', 4: '♜\uFE0E', 5: '♟\uFE0E' };
+
+// CHESS CLIENT-SIDE HELPERS (For Valid Move Dots)
+function getChessPlayerClient(piece) { if (piece >= 11 && piece <= 15) return 'Player 1'; if (piece >= 21 && piece <= 25) return 'Player 2'; return null; }
+function checkLineOfSightClient(board, fromR, fromC, toR, toC) { let rStep = toR === fromR ? 0 : (toR - fromR) / Math.abs(toR - fromR); let cStep = toC === fromC ? 0 : (toC - fromC) / Math.abs(toC - fromC); let r = fromR + rStep; let c = fromC + cStep; while (r !== toR || c !== toC) { if (board[r][c] !== 0) return false; r += rStep; c += cStep; } return true; }
+function isValidChessMoveClient(board, player, fromR, fromC, toR, toC) { if (fromR === toR && fromC === toC) return false; let piece = board[fromR][fromC]; let target = board[toR][toC]; if (target !== 0 && getChessPlayerClient(target) === player) return false; let dr = toR - fromR; let dc = toC - fromC; let adr = Math.abs(dr); let adc = Math.abs(dc); let type = piece % 10; if (type === 1) return adr <= 1 && adc <= 1; if (type === 2) return (adr === adc || adr === 0 || adc === 0) && checkLineOfSightClient(board, fromR, fromC, toR, toC); if (type === 3) return (adr === adc) && checkLineOfSightClient(board, fromR, fromC, toR, toC); if (type === 4) return (adr === 0 || adc === 0) && checkLineOfSightClient(board, fromR, fromC, toR, toC); if (type === 5) { let dir = player === 'Player 1' ? 1 : -1; if (dc === dir && adr === 0 && target === 0) return true; if (dc === dir && adr === 1 && target !== 0) return true; return false; } return false; }
 
 const c8Container = document.getElementById('c8-container'); const c8OppHand = document.getElementById('c8-opp-hand'); const c8MyHand = document.getElementById('c8-my-hand'); const c8Discard = document.getElementById('c8-discard'); const c8Deck = document.getElementById('c8-deck'); const c8ActiveSuit = document.getElementById('c8-active-suit');
 const rmContainer = document.getElementById('rm-container'); const rmOppHand = document.getElementById('rm-opp-hand'); const rmMyHand = document.getElementById('rm-my-hand'); const rmDiscardPile = document.getElementById('rm-discard-pile'); const rmDeck = document.getElementById('rm-deck'); const rmMeldArea = document.getElementById('rm-meld-area');
@@ -19,7 +28,6 @@ const rmContainer = document.getElementById('rm-container'); const rmOppHand = d
 let currentRoom = null, mySymbol = null, currentGameType = null, myUsername = null, myUserObj = null; 
 let myPrivateCode = null; let isLobbyHost = false; let isPrivateGame = false;
 let localBattleshipBoard = Array(10).fill(null).map(() => Array(10).fill(0));
-let chkSelected = null; let lastChkGame = null;
 let pendingC8CardIndex = null; let lastTopCardStr = ""; 
 let rummySelectedIndices = []; let rummySelectedMeldId = null;
 
@@ -65,7 +73,7 @@ document.getElementById('quitBtn').addEventListener('click', () => { socket.emit
 socket.on('matchFound', (data) => { 
     document.getElementById('private-lobby-modal').style.display = 'none'; statusDiv.innerText = `Match found! 🎯`; gameSection.classList.add('fade-out'); 
     const rScreen = document.getElementById('roulette-screen'); const rStrip = document.getElementById('roulette-strip');
-    const gamesList = ['Super Tic-Tac-Toe', 'Endless Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Checkers', 'Crazy Eights', 'Rummy'];
+    const gamesList = ['Super Tic-Tac-Toe', 'Endless Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Mini Chess', 'Crazy Eights', 'Rummy'];
     let stripHTML = ''; for(let i=0; i<30; i++) { stripHTML += `<div class="roulette-item">${gamesList[Math.floor(Math.random() * gamesList.length)]}</div>`; }
     stripHTML += `<div class="roulette-item" style="color: var(--primary);">${data.game}</div>`;
     rStrip.innerHTML = stripHTML; rScreen.style.display = 'flex';
@@ -81,13 +89,41 @@ socket.on('updateLobbyPlayers', (players) => { document.getElementById('lobbyPla
 document.getElementById('sendChatBtn').addEventListener('click', () => { const text = document.getElementById('chatInput').value; if (text && myPrivateCode) { socket.emit('sendPrivateChat', { code: myPrivateCode, message: text, username: myUsername }); document.getElementById('chatInput').value = ''; } }); socket.on('updatePrivateChat', (msg) => { const chatBox = document.getElementById('chat-box'); chatBox.innerHTML += `<div class="chat-msg"><span>${msg.username}:</span> ${msg.text}</div>`; chatBox.scrollTop = chatBox.scrollHeight; });
 document.getElementById('startPrivateBtn').addEventListener('click', () => { socket.emit('startPrivateGame', { code: myPrivateCode, gameSelection: document.getElementById('gameSelector').value }); }); document.getElementById('leaveLobbyBtn').addEventListener('click', () => location.reload());
 
-// UPDATED: Checkers now uses 4 rows
+// Generate Grids
 for (let i = 0; i < 9; i++) { const macroCell = document.createElement('div'); macroCell.className = 'macro-cell'; macroCell.id = `macro-${i}`; for (let j = 0; j < 9; j++) { const microCell = document.createElement('div'); microCell.className = 'micro-cell'; microCell.id = `micro-${i}-${j}`; microCell.onclick = () => { if (currentGameType === 'Super Tic-Tac-Toe') socket.emit('makeMove', { roomName: currentRoom, macroIndex: i, microIndex: j }); }; macroCell.appendChild(microCell); } stttBoard.appendChild(macroCell); }
 for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const cell = document.createElement('div'); cell.className = 'ttt-cell'; cell.id = `ttt-${r}-${c}`; cell.onclick = () => { if (currentGameType === 'Endless Tic-Tac-Toe') socket.emit('makeTTTEndlessMove', { roomName: currentRoom, r, c }); }; tttBoard.appendChild(cell); } }
 for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = document.createElement('div'); cell.className = 'c4-cell'; cell.id = `c4-${r}-${c}`; cell.onclick = () => { if (currentGameType === 'Connect 4') socket.emit('makeC4Move', { roomName: currentRoom, col: c }); }; c4Board.appendChild(cell); } }
 for (let r = 0; r < 7; r++) { for (let c = 0; c < 7; c++) { const div = document.createElement('div'); if (r % 2 === 0 && c % 2 === 0) div.className = 'dab-dot'; else if (r % 2 === 0 && c % 2 !== 0) { div.className = 'dab-hline'; const hRow = r / 2; const hCol = Math.floor(c / 2); div.id = `h-${hRow}-${hCol}`; div.onclick = () => { if (currentGameType === 'Dots and Boxes') socket.emit('makeDABMove', { roomName: currentRoom, type: 'h', r: hRow, c: hCol }); }; } else if (r % 2 !== 0 && c % 2 === 0) { div.className = 'dab-vline'; const vRow = Math.floor(r / 2); const vCol = c / 2; div.id = `v-${vRow}-${vCol}`; div.onclick = () => { if (currentGameType === 'Dots and Boxes') socket.emit('makeDABMove', { roomName: currentRoom, type: 'v', r: vRow, c: vCol }); }; } else { div.className = 'dab-box'; div.id = `box-${Math.floor(r / 2)}-${Math.floor(c / 2)}`; } dabBoard.appendChild(div); } }
 for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const myCell = document.createElement('div'); myCell.className = 'bs-cell'; myCell.id = `bs-my-${r}-${c}`; bsMyBoard.appendChild(myCell); const targetCell = document.createElement('div'); targetCell.className = 'bs-cell'; targetCell.id = `bs-target-${r}-${c}`; targetCell.onclick = () => { if (currentGameType === 'Battleship') socket.emit('makeBattleshipMove', { roomName: currentRoom, r, c }); }; bsTrackingBoard.appendChild(targetCell); } }
-for (let r = 0; r < 4; r++) { for (let c = 0; c < 8; c++) { const cell = document.createElement('div'); cell.id = `chk-${r}-${c}`; if ((r + c) % 2 === 0) cell.className = 'chk-cell chk-light'; else { cell.className = 'chk-cell chk-dark'; cell.onclick = () => { if (currentGameType !== 'Checkers' || !lastChkGame || lastChkGame.turn !== mySymbol) return; if (chkSelected) { if (chkSelected.r === r && chkSelected.c === c) { chkSelected = null; updateChkUI(lastChkGame); return; } socket.emit('makeCheckersMove', { roomName: currentRoom, fromR: chkSelected.r, fromC: chkSelected.c, toR: r, toC: c }); chkSelected = null; } else { const p = lastChkGame.board[r][c]; if ((mySymbol === 'Red' && (p === 1 || p === 3)) || (mySymbol === 'Black' && (p === 2 || p === 4))) { chkSelected = {r, c}; updateChkUI(lastChkGame); } } }; } chkBoard.appendChild(cell); } }
+
+// NEW: MINI CHESS BOARD GENERATION (4x8)
+for (let r = 0; r < 4; r++) { 
+    for (let c = 0; c < 8; c++) { 
+        const cell = document.createElement('div'); 
+        cell.id = `mc-${r}-${c}`; 
+        cell.className = `mc-cell ${(r + c) % 2 === 0 ? 'mc-light' : 'mc-dark'}`; 
+        cell.onclick = () => { 
+            if (currentGameType !== 'Mini Chess' || !lastChessGame || lastChessGame.turn !== mySymbol) return;
+            const piece = lastChessGame.board[r][c];
+            const isMyPiece = (mySymbol === 'Player 1' && piece >= 11 && piece <= 15) || (mySymbol === 'Player 2' && piece >= 21 && piece <= 25);
+            
+            if (mcSelected) {
+                if (isMyPiece) { 
+                    mcSelected = {r, c}; updateChessUI(lastChessGame); 
+                } else { 
+                    if (isValidChessMoveClient(lastChessGame.board, mySymbol, mcSelected.r, mcSelected.c, r, c)) {
+                        socket.emit('makeChessMove', { roomName: currentRoom, fromR: mcSelected.r, fromC: mcSelected.c, toR: r, toC: c }); 
+                    }
+                    mcSelected = null;
+                    updateChessUI(lastChessGame); // clear dots
+                }
+            } else {
+                if (isMyPiece) { mcSelected = {r, c}; updateChessUI(lastChessGame); }
+            }
+        }; 
+        mcBoard.appendChild(cell); 
+    } 
+}
 
 socket.on('startGame', (gameState) => {
     currentRoom = gameState.roomName; currentGameType = gameState.gameType; mySymbol = gameState.players[socket.id]; isPrivateGame = gameState.isPrivate; 
@@ -98,21 +134,21 @@ socket.on('startGame', (gameState) => {
 
     if (currentGameType === 'Connect 4') roleDisplay.innerHTML = `You are playing as: <strong>${mySymbol === 'Red' ? '🔴 Red' : '🟡 Yellow'}</strong>`;
     else if (currentGameType === 'Dots and Boxes') roleDisplay.innerHTML = `You are playing as: <strong>${mySymbol === 'Red' ? '🔴 Red' : '🔵 Blue'}</strong>`;
-    else if (currentGameType === 'Checkers') roleDisplay.innerHTML = `You are playing as: <strong>${mySymbol === 'Red' ? '🔴 Red' : '⚫ Black'}</strong>`;
     else if (currentGameType === 'Super Tic-Tac-Toe' || currentGameType === 'Endless Tic-Tac-Toe') roleDisplay.innerHTML = `You are playing as: <strong style="color: ${mySymbol === 'X' ? 'var(--primary)' : 'var(--secondary)'};">${mySymbol}</strong>`;
     else if (currentGameType === 'Battleship') roleDisplay.innerHTML = `You are Commander <strong>${mySymbol}</strong>`;
+    else if (currentGameType === 'Mini Chess') roleDisplay.innerHTML = `You are <strong>${mySymbol === 'Player 1' ? '🔴 Player 1' : '🔵 Player 2'}</strong>`;
     else if (currentGameType === 'Crazy Eights' || currentGameType === 'Rummy') roleDisplay.innerHTML = `You are <strong>${mySymbol}</strong>`;
 
     document.getElementById('roulette-screen').style.display = 'none'; 
     gameSection.style.display = 'none'; gameSection.classList.remove('fade-out'); playSection.style.display = 'block'; playSection.classList.add('fade-in');
     
-    stttContainer.style.display = 'none'; tttContainer.style.display = 'none'; c4Container.style.display = 'none'; dabContainer.style.display = 'none'; bsContainer.style.display = 'none'; chkContainer.style.display = 'none'; c8Container.style.display = 'none'; rmContainer.style.display = 'none';
+    stttContainer.style.display = 'none'; tttContainer.style.display = 'none'; c4Container.style.display = 'none'; dabContainer.style.display = 'none'; bsContainer.style.display = 'none'; mcContainer.style.display = 'none'; c8Container.style.display = 'none'; rmContainer.style.display = 'none';
 
     if (currentGameType === 'Super Tic-Tac-Toe') { stttContainer.style.display = 'block'; updateSTTTUI(gameState); } 
     else if (currentGameType === 'Endless Tic-Tac-Toe') { tttContainer.style.display = 'block'; updateTTTEndlessUI(gameState); } 
     else if (currentGameType === 'Connect 4') { c4Container.style.display = 'block'; updateC4UI(gameState); } 
     else if (currentGameType === 'Dots and Boxes') { dabContainer.style.display = 'block'; updateDABUI(gameState); }
-    else if (currentGameType === 'Checkers') { chkContainer.style.display = 'block'; chkSelected = null; updateChkUI(gameState); }
+    else if (currentGameType === 'Mini Chess') { mcContainer.style.display = 'block'; mcSelected = null; updateChessUI(gameState); }
     else if (currentGameType === 'Battleship') { bsContainer.style.display = 'block'; document.getElementById('bs-setup-menu').style.display = 'block'; document.getElementById('bs-randomize-btn').click(); turnDisplay.innerText = "Arrange your fleet!"; turnDisplay.style.color = "var(--text)"; }
     else if (currentGameType === 'Crazy Eights') { c8Container.style.display = 'flex'; turnDisplay.innerText = "Dealing cards..."; }
     else if (currentGameType === 'Rummy') { rmContainer.style.display = 'flex'; turnDisplay.innerText = "Dealing cards..."; }
@@ -181,26 +217,36 @@ function updateSTTTUI(game) {
 socket.on('updateC4Board', (game) => { turnDisplay.innerText = game.turn === mySymbol ? "🔴 Your Turn!" : "🟡 Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? (mySymbol==='Red'?'var(--primary)':'var(--accent)') : (mySymbol==='Red'?'var(--accent)':'var(--primary)'); document.querySelectorAll('.c4-cell').forEach(c => c.classList.remove('c4-win-pulse')); for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = document.getElementById(`c4-${r}-${c}`); if (game.board[r][c] === 'Red' && !cell.classList.contains('c4-red')) cell.className = 'c4-cell c4-red'; else if (game.board[r][c] === 'Yellow' && !cell.classList.contains('c4-yellow')) cell.className = 'c4-cell c4-yellow'; } } if (game.winLine) { game.winLine.forEach(([r, c]) => { document.getElementById(`c4-${r}-${c}`).classList.add('c4-win-pulse'); }); } });
 socket.on('updateDABBoard', (game) => { turnDisplay.innerText = game.turn === mySymbol ? (mySymbol==='Red'?'🔴 Your Turn!':'🔵 Your Turn!') : "⏳ Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? (mySymbol==='Red'?'var(--primary)':'var(--secondary)') : (mySymbol==='Red'?'var(--secondary)':'var(--primary)'); document.getElementById('dab-score-red').innerText = game.scores['Red']; document.getElementById('dab-score-blue').innerText = game.scores['Blue']; for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const hLine = document.getElementById(`h-${r}-${c}`); if (game.hLines[r][c] === 'Red') hLine.className = 'dab-hline dab-line-red'; else if (game.hLines[r][c] === 'Blue') hLine.className = 'dab-hline dab-line-blue'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const vLine = document.getElementById(`v-${r}-${c}`); if (game.vLines[r][c] === 'Red') vLine.className = 'dab-vline dab-line-red'; else if (game.vLines[r][c] === 'Blue') vLine.className = 'dab-vline dab-line-blue'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const box = document.getElementById(`box-${r}-${c}`); if (game.boxes[r][c] === 'Red') { box.className = 'dab-box dab-box-red'; box.innerText = 'R'; } else if (game.boxes[r][c] === 'Blue') { box.className = 'dab-box dab-box-blue'; box.innerText = 'B'; } } } });
 
-// UPDATED: Checkers scans 4 rows for updates
-socket.on('updateCheckersBoard', updateChkUI); 
-function updateChkUI(game) { 
-    lastChkGame = game; 
-    turnDisplay.innerText = game.turn === mySymbol ? (game.multiJumping ? "🔄 Double Jump Available!" : "🎯 Your Turn!") : "⏳ Opponent's Turn..."; 
+socket.on('updateChessBoard', updateChessUI); 
+function updateChessUI(game) { 
+    lastChessGame = game; 
+    turnDisplay.innerText = game.turn === mySymbol ? "🎯 Your Turn!" : "⏳ Opponent's Turn..."; 
     turnDisplay.style.color = game.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; 
-    if (game.multiJumping && game.turn === mySymbol) { chkSelected = { r: game.multiJumping.r, c: game.multiJumping.c }; } else if (game.turn !== mySymbol) { chkSelected = null; } 
+    if (game.turn !== mySymbol) mcSelected = null; 
+    
     for (let r = 0; r < 4; r++) { 
         for (let c = 0; c < 8; c++) { 
-            if ((r + c) % 2 === 0) continue; 
-            const cell = document.getElementById(`chk-${r}-${c}`); 
+            const cell = document.getElementById(`mc-${r}-${c}`); 
             cell.innerHTML = ''; 
+            cell.classList.remove('mc-selected'); 
             const p = game.board[r][c]; 
+            
             if (p !== 0) { 
                 const pieceDiv = document.createElement('div'); 
-                pieceDiv.className = `chk-piece ${p === 1 || p === 3 ? 'chk-red' : 'chk-black'}`; 
-                if (chkSelected && chkSelected.r === r && chkSelected.c === c) pieceDiv.classList.add('chk-selected'); 
-                if (p === 3 || p === 4) pieceDiv.innerText = '👑'; 
+                pieceDiv.className = `mc-piece ${p >= 20 ? 'mc-p2' : 'mc-p1'}`; 
+                pieceDiv.innerText = chessIcons[p % 10]; 
                 cell.appendChild(pieceDiv); 
             } 
+            
+            if (mcSelected) {
+                if (mcSelected.r === r && mcSelected.c === c) {
+                    cell.classList.add('mc-selected'); 
+                } else if (isValidChessMoveClient(game.board, mySymbol, mcSelected.r, mcSelected.c, r, c)) {
+                    const dot = document.createElement('div');
+                    dot.className = p !== 0 ? 'mc-dot-attack' : 'mc-dot';
+                    cell.appendChild(dot);
+                }
+            }
         } 
     } 
 }
@@ -301,8 +347,8 @@ function resetBoardUI() {
     for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const h = document.getElementById(`h-${r}-${c}`); if(h) h.className = 'dab-hline'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const v = document.getElementById(`v-${r}-${c}`); if(v) v.className = 'dab-vline'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const b = document.getElementById(`box-${r}-${c}`); if(b) { b.className = 'dab-box'; b.innerText = ''; } } } document.getElementById('dab-score-red').innerText = '0'; document.getElementById('dab-score-blue').innerText = '0';
     for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const m = document.getElementById(`bs-my-${r}-${c}`); if(m) { m.className = 'bs-cell'; m.innerText = ''; } const t = document.getElementById(`bs-target-${r}-${c}`); if(t) { t.className = 'bs-cell'; t.innerText = ''; } } }
     
-    // UPDATED: Checkers reset loops up to 4 now!
-    for (let r = 0; r < 4; r++) { for (let c = 0; c < 8; c++) { const cell = document.getElementById(`chk-${r}-${c}`); if(cell) cell.innerHTML = ''; } }
+    // NEW: Mini Chess clear logic
+    for (let r = 0; r < 4; r++) { for (let c = 0; c < 8; c++) { const cell = document.getElementById(`mc-${r}-${c}`); if(cell) { cell.innerHTML = ''; cell.classList.remove('mc-selected'); } } }
     
     c8MyHand.innerHTML = ''; c8OppHand.innerHTML = ''; c8Discard.innerHTML = ''; c8ActiveSuit.innerText = ''; document.getElementById('c8-suit-modal').style.display = 'none'; lastTopCardStr = ""; 
     rmMyHand.innerHTML = ''; rmOppHand.innerHTML = ''; rmDiscardPile.innerHTML = ''; rmMeldArea.innerHTML = ''; rummySelectedIndices = []; rummySelectedMeldId = null;

@@ -19,20 +19,26 @@ module.exports = {
                 pointsWon = 45 + Math.min(30, diff * 2); 
                 pointsLost = 75 - Math.min(35, game.scores[loserSymbol] * 2.5); 
 
-            } else if (game.gameType === 'Checkers') {
-                let wPower = 0, lPower = 0;
-                // NEW: Scanning 4 rows instead of 8
+            } else if (game.gameType === 'Mini Chess') {
+                let winnerMaterial = 0; let loserMaterial = 0;
+                // FIXED: 4x8 bounds
                 for (let r = 0; r < 4; r++) {
                     for (let c = 0; c < 8; c++) {
                         let p = game.board[r][c];
-                        if (p === 1) winnerSymbol === 'Red' ? wPower++ : lPower++;
-                        if (p === 3) winnerSymbol === 'Red' ? wPower+=2 : lPower+=2;
-                        if (p === 2) winnerSymbol === 'Black' ? wPower++ : lPower++;
-                        if (p === 4) winnerSymbol === 'Black' ? wPower+=2 : lPower+=2;
+                        if (p === 0) continue;
+                        let val = p % 10;
+                        let score = val === 5 ? 1 : val === 3 ? 3 : val === 4 ? 5 : val === 2 ? 9 : 0;
+                        
+                        if ((p >= 11 && p <= 15 && winnerSymbol === 'Player 1') || 
+                            (p >= 21 && p <= 25 && winnerSymbol === 'Player 2')) {
+                            winnerMaterial += score;
+                        } else {
+                            loserMaterial += score;
+                        }
                     }
                 }
-                pointsWon = 40 + Math.min(35, Math.floor(wPower * 4.5)); 
-                pointsLost = 75 - Math.min(35, Math.floor(lPower * 5.5)); 
+                pointsWon = 40 + Math.min(35, Math.floor(winnerMaterial * 1.5)); 
+                pointsLost = 75 - Math.min(35, Math.floor(loserMaterial * 1.5)); 
 
             } else if (game.gameType === 'Battleship') {
                 let winnerHealth = game.health[winnerId]; 
@@ -41,27 +47,10 @@ module.exports = {
                 pointsLost = 75 - Math.round((loserHits / 16) * 35); 
 
             } else if (game.gameType === 'Connect 4') {
-                let loserThreats = 0; let piecesPlaced = 0;
-                const dirs = [[0,1], [1,0], [1,1], [1,-1]];
-                for (let r = 0; r < 6; r++) {
-                    for (let c = 0; c < 7; c++) {
-                        if (game.board[r][c]) piecesPlaced++;
-                        for (let [dr, dc] of dirs) {
-                            let lCount = 0; let nullCount = 0; let validWindow = true;
-                            for(let i = 0; i < 4; i++) {
-                                let nr = r + dr*i, nc = c + dc*i;
-                                if (nr >= 0 && nr < 6 && nc >= 0 && nc < 7) {
-                                    if (game.board[nr][nc] === loserSymbol) lCount++;
-                                    else if (game.board[nr][nc] === null) nullCount++;
-                                } else { validWindow = false; break; }
-                            }
-                            if (validWindow && lCount === 3 && nullCount === 1) loserThreats++;
-                        }
-                    }
-                }
-                loserThreats = Math.floor(loserThreats / 2);
-                pointsWon = 40 + Math.round(((42 - piecesPlaced) / 35) * 35); 
-                pointsLost = 75 - (loserThreats * 5) - Math.floor(piecesPlaced / 2); 
+                let piecesPlaced = 0;
+                game.board.forEach(row => row.forEach(cell => { if(cell) piecesPlaced++; }));
+                pointsWon = 40 + Math.round(((42 - piecesPlaced) / 42) * 35); 
+                pointsLost = 50 + Math.round((piecesPlaced / 42) * 25); 
             
             } else if (game.gameType === 'Crazy Eights') {
                 let loserHandSize = game.hands[loserId].length; 
@@ -69,11 +58,11 @@ module.exports = {
                 pointsLost = 75 - Math.min(35, Math.max(0, 7 - loserHandSize) * 5); 
                 
             } else if (game.gameType === 'Rummy') {
-                let diff = game.rummyScores[winnerSymbol] - game.rummyScores[loserSymbol];
+                let diff = Math.abs((game.rummyScores?.['Player 1'] || 0) - (game.rummyScores?.['Player 2'] || 0));
                 pointsWon = 40 + Math.min(35, diff);
-                pointsLost = 75 - Math.min(35, Math.max(0, game.rummyScores[loserSymbol]));
+                pointsLost = 40 + Math.min(35, diff);
             
-            } else if (game.gameType === 'Endless Tic-Tac-Toe') {
+            } else {
                 pointsWon = 40; 
                 pointsLost = 40; 
             }

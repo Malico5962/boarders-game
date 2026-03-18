@@ -1,7 +1,8 @@
 require('dotenv').config(); 
 const express = require('express'); const http = require('http'); const { Server } = require('socket.io'); const path = require('path'); const bcrypt = require('bcryptjs'); const mongoose = require('mongoose'); 
 
-const stttLogic = require('./games/superTicTacToe'); const c4Logic = require('./games/connect4'); const dabLogic = require('./games/dotsAndBoxes'); const bsLogic = require('./games/battleship'); const chkLogic = require('./games/checkers');
+const stttLogic = require('./games/superTicTacToe'); const c4Logic = require('./games/connect4'); const dabLogic = require('./games/dotsAndBoxes'); const bsLogic = require('./games/battleship'); 
+const miniChessLogic = require('./games/miniChess'); // NEW CHESS LOGIC
 const rankLogic = require('./games/rank'); const c8Logic = require('./games/crazyEights'); const rummyLogic = require('./games/rummy'); const tttLogic = require('./games/ticTacToe');
 
 const app = express(); const server = http.createServer(app); const io = new Server(server);
@@ -54,21 +55,46 @@ async function initializeGame(roomName, chosenGame, player1, player2, privateCod
         } else if (chosenGame === 'Dots and Boxes') { game.players = { [player1.id]: 'Red', [player2.id]: 'Blue' }; game.hLines = Array(4).fill(null).map(() => Array(3).fill(null)); game.vLines = Array(3).fill(null).map(() => Array(4).fill(null)); game.boxes = Array(3).fill(null).map(() => Array(3).fill(null)); game.scores = { 'Red': 0, 'Blue': 0 }; game.turn = 'Red'; safeGameState.players = game.players; safeGameState.hLines = game.hLines; safeGameState.vLines = game.vLines; safeGameState.boxes = game.boxes; safeGameState.scores = game.scores; safeGameState.turn = game.turn;
         } else if (chosenGame === 'Battleship') { game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; game.phase = 'setup'; game.ready = { [player1.id]: false, [player2.id]: false }; game.secretBoards = { [player1.id]: null, [player2.id]: null }; game.trackingBoards = { [player1.id]: Array(10).fill(null).map(()=>Array(10).fill(0)), [player2.id]: Array(10).fill(null).map(()=>Array(10).fill(0)) }; game.health = { [player1.id]: 17, [player2.id]: 17 }; game.turn = 'Player 1'; safeGameState.players = game.players; safeGameState.phase = game.phase;
         } else if (chosenGame === 'Crazy Eights') { game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; game.turn = 'Player 1'; game.activeSuit = null; const suits = ['♥', '♦', '♣', '♠']; const values = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']; game.deck = []; suits.forEach(s => values.forEach(v => game.deck.push({suit: s, val: v}))); game.deck.sort(() => Math.random() - 0.5); game.hands = { [player1.id]: game.deck.splice(0, 7), [player2.id]: game.deck.splice(0, 7) }; game.discardPile = [game.deck.pop()]; while(game.discardPile[0].val === '8') { game.deck.unshift(game.discardPile.pop()); game.discardPile = [game.deck.pop()]; } safeGameState.players = game.players; safeGameState.turn = game.turn;
-        } else if (chosenGame === 'Rummy') { game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; game.turn = 'Player 1'; game.phase = 'draw'; game.melds = []; const suits = ['♥', '♦', '♣', '♠']; const values = ['A','2','3','4','5','6','7','8','9','10','J','Q','K']; game.deck = []; suits.forEach(s => values.forEach(v => game.deck.push({suit: s, val: v}))); game.deck.sort(() => Math.random() - 0.5); game.hands = { [player1.id]: game.deck.splice(0, 5), [player2.id]: game.deck.splice(0, 5) }; game.discardPile = [game.deck.pop()]; safeGameState.players = game.players; safeGameState.turn = game.turn; 
+        } else if (chosenGame === 'Rummy') { 
+            game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; 
+            game.turn = 'Player 1'; 
+            game.phase = 'draw'; 
+            game.melds = []; 
+            const suits = ['♥', '♦', '♣', '♠']; 
+            const values = ['A','2','3','4','5','6','7','8','9','10','J','Q','K']; 
+            game.deck = []; 
+            suits.forEach(s => values.forEach(v => game.deck.push({suit: s, val: v}))); 
+            game.deck.sort(() => Math.random() - 0.5); 
+            // CHANGED: 3 Cards per player
+            game.hands = { 
+                [player1.id]: game.deck.splice(0, 3), 
+                [player2.id]: game.deck.splice(0, 3) 
+            }; 
+            game.discardPile = [game.deck.pop()]; 
+            safeGameState.players = game.players; 
+            safeGameState.turn = game.turn; 
         } else if (chosenGame === 'Endless Tic-Tac-Toe') { game.players = { [player1.id]: 'X', [player2.id]: 'O' }; game.board = Array(3).fill(null).map(() => Array(3).fill(null)); game.history = { 'X': [], 'O': [] }; game.turn = 'X'; safeGameState.players = game.players; safeGameState.board = game.board; safeGameState.history = game.history; safeGameState.turn = game.turn;
         
-        // NEW 4x8 CHECKERS
-        } else if (chosenGame === 'Checkers') { 
-            game.players = { [player1.id]: 'Red', [player2.id]: 'Black' }; 
-            game.turn = 'Red'; 
-            game.redCount = 4; 
-            game.blackCount = 4; 
-            game.multiJumping = null; 
+        // NEW: 4x8 MINI CHESS SETUP
+        } else if (chosenGame === 'Mini Chess') { 
+            game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; 
+            game.turn = 'Player 1'; 
             game.board = Array(4).fill(null).map(() => Array(8).fill(0)); 
-            for (let c=0; c<8; c++) { 
-                if (c % 2 !== 0) game.board[0][c] = 1; // Red on top row
-                if (c % 2 === 0) game.board[3][c] = 2; // Black on bottom row
-            } 
+            
+            // Player 1 (Red - Left Side)
+            game.board[0][0] = 14; // Rook
+            game.board[1][0] = 12; // Queen
+            game.board[2][0] = 11; // King
+            game.board[3][0] = 13; // Bishop
+            for(let r=0; r<4; r++) game.board[r][1] = 15; // Pawns
+
+            // Player 2 (Blue - Right Side)
+            game.board[0][7] = 24; // Rook
+            game.board[1][7] = 22; // Queen
+            game.board[2][7] = 21; // King
+            game.board[3][7] = 23; // Bishop
+            for(let r=0; r<4; r++) game.board[r][6] = 25; // Pawns
+            
             safeGameState.players = game.players; 
             safeGameState.board = game.board; 
             safeGameState.turn = game.turn; 
@@ -88,7 +114,7 @@ io.on('connection', (socket) => {
     
     socket.on('joinQueue', (username) => { 
         socket.username = username; matchmakingQueue = matchmakingQueue.filter(p => p.id !== socket.id); matchmakingQueue.push(socket); 
-        if (matchmakingQueue.length >= 2) { const player1 = matchmakingQueue.shift(); const player2 = matchmakingQueue.shift(); const minigames = ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Checkers', 'Crazy Eights', 'Rummy', 'Endless Tic-Tac-Toe']; const roomName = `room_${Date.now()}_${player1.id}_${player2.id}`; player1.join(roomName); player2.join(roomName); initializeGame(roomName, minigames[Math.floor(Math.random() * minigames.length)], player1, player2, null); } 
+        if (matchmakingQueue.length >= 2) { const player1 = matchmakingQueue.shift(); const player2 = matchmakingQueue.shift(); const minigames = ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Mini Chess', 'Crazy Eights', 'Rummy', 'Endless Tic-Tac-Toe']; const roomName = `room_${Date.now()}_${player1.id}_${player2.id}`; player1.join(roomName); player2.join(roomName); initializeGame(roomName, minigames[Math.floor(Math.random() * minigames.length)], player1, player2, null); } 
     });
 
     socket.on('createPrivateRoom', ({ username, code }) => { if (privateRooms[code]) return socket.emit('privateError', 'Code already exists!'); socket.username = username; privateRooms[code] = { host: socket.id, players: [socket], messages: [] }; socket.join(`private_${code}`); socket.emit('privateRoomJoined', { code, isHost: true, players: [username], messages: [] }); });
@@ -101,7 +127,7 @@ io.on('connection', (socket) => {
             const player1 = room.players[0]; const player2 = room.players[1]; 
             const roomName = `room_${Date.now()}_${player1.id}_${player2.id}`; 
             player1.join(roomName); player2.join(roomName); 
-            let chosenGame = gameSelection === 'Random' ? ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Checkers', 'Crazy Eights', 'Rummy', 'Endless Tic-Tac-Toe'][Math.floor(Math.random() * 8)] : gameSelection; 
+            let chosenGame = gameSelection === 'Random' ? ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Mini Chess', 'Crazy Eights', 'Rummy', 'Endless Tic-Tac-Toe'][Math.floor(Math.random() * 8)] : gameSelection; 
             initializeGame(roomName, chosenGame, player1, player2, code); 
         } 
     });
@@ -109,7 +135,6 @@ io.on('connection', (socket) => {
     socket.on('makeMove', ({ roomName, macroIndex, microIndex }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Super Tic-Tac-Toe') { stttLogic.handleMove(game, socket.id, macroIndex, microIndex); io.to(roomName).emit('updateBoard', game); if (game.winner) { setTimeout(() => { handleGameEnd(roomName, game.winner === 'Tie' ? null : Object.keys(game.players).find(id => game.players[id] === game.winner), game.winner === 'Tie' ? null : Object.keys(game.players).find(id => game.players[id] !== game.winner), false); }, 2500); } } });
     socket.on('makeC4Move', ({ roomName, col }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Connect 4') { c4Logic.handleMove(game, socket.id, col); io.to(roomName).emit('updateC4Board', game); if (game.winner) { setTimeout(() => { handleGameEnd(roomName, game.winner === 'Tie' ? null : Object.keys(game.players).find(id => game.players[id] === game.winner), game.winner === 'Tie' ? null : Object.keys(game.players).find(id => game.players[id] !== game.winner), false); }, 2500); } } });
     socket.on('makeDABMove', ({ roomName, type, r, c }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Dots and Boxes') { dabLogic.handleMove(game, socket.id, type, r, c); io.to(roomName).emit('updateDABBoard', game); if (game.winner) handleGameEnd(roomName, game.winner === 'Tie' ? null : Object.keys(game.players).find(id => game.players[id] === game.winner), game.winner === 'Tie' ? null : Object.keys(game.players).find(id => game.players[id] !== game.winner), false); } });
-    socket.on('makeCheckersMove', ({ roomName, fromR, fromC, toR, toC }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Checkers') { chkLogic.handleMove(game, socket.id, fromR, fromC, toR, toC); io.to(roomName).emit('updateCheckersBoard', game); if (game.winner) handleGameEnd(roomName, Object.keys(game.players).find(id => game.players[id] === game.winner), Object.keys(game.players).find(id => game.players[id] !== game.winner), false); } });
     socket.on('submitBattleshipBoard', ({ roomName, board }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Battleship' && game.phase === 'setup') { game.secretBoards[socket.id] = board; game.ready[socket.id] = true; if (Object.values(game.ready).every(r => r === true)) { game.phase = 'playing'; io.to(roomName).emit('battleshipStartPlaying', { turn: game.turn }); } else { socket.emit('battleshipWaiting'); } } });
     socket.on('makeBattleshipMove', ({ roomName, r, c }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Battleship' && game.phase === 'playing') { bsLogic.handleShot(game, socket.id, r, c); Object.keys(game.players).forEach(pId => { io.to(pId).emit('updateBattleshipBoard', { turn: game.turn, myBoard: game.secretBoards[pId], trackingBoard: game.trackingBoards[pId] }); }); if (game.winner) { io.to(roomName).emit('revealBattleship', game.secretBoards); const winnerId = Object.keys(game.players).find(id => game.players[id] === game.winner); setTimeout(() => { handleGameEnd(roomName, winnerId, Object.keys(game.players).find(id => id !== winnerId), false); }, 3500); } } });
     socket.on('makeC8Play', ({ roomName, cardIndex, declaredSuit }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Crazy Eights') { c8Logic.handlePlay(game, socket.id, cardIndex, declaredSuit); broadcastCrazyEightsState(roomName); if (game.winner) { const winnerId = Object.keys(game.players).find(id => game.players[id] === game.winner); setTimeout(() => { handleGameEnd(roomName, winnerId, Object.keys(game.players).find(id => id !== winnerId), false); }, 2000); } } });
@@ -119,6 +144,19 @@ io.on('connection', (socket) => {
     socket.on('makeRummyLayOff', ({ roomName, cardIndex, meldId }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Rummy') { rummyLogic.handleLayOff(game, socket.id, cardIndex, meldId); broadcastRummyState(roomName); if (game.winner) { const winnerId = Object.keys(game.players).find(id => game.players[id] === game.winner); setTimeout(() => { handleGameEnd(roomName, winnerId, Object.keys(game.players).find(id => id !== winnerId), false); }, 2000); } } });
     socket.on('makeRummyDiscard', ({ roomName, cardIndex }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Rummy') { rummyLogic.handleDiscard(game, socket.id, cardIndex); broadcastRummyState(roomName); if (game.winner) { const winnerId = Object.keys(game.players).find(id => game.players[id] === game.winner); setTimeout(() => { handleGameEnd(roomName, winnerId, Object.keys(game.players).find(id => id !== winnerId), false); }, 2000); } } });
     socket.on('makeTTTEndlessMove', ({ roomName, r, c }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Endless Tic-Tac-Toe') { tttLogic.handleMove(game, socket.id, r, c); io.to(roomName).emit('updateTTTEndlessBoard', game); if (game.winner) { const winnerId = Object.keys(game.players).find(id => game.players[id] === game.winner); setTimeout(() => { handleGameEnd(roomName, winnerId, Object.keys(game.players).find(id => id !== winnerId), false); }, 2500); } } });
+
+    // NEW: Chess Socket Listener
+    socket.on('makeChessMove', ({ roomName, fromR, fromC, toR, toC }) => { 
+        const game = activeGames[roomName]; 
+        if (game && game.gameType === 'Mini Chess') { 
+            miniChessLogic.handleMove(game, socket.id, fromR, fromC, toR, toC); 
+            io.to(roomName).emit('updateChessBoard', game); 
+            if (game.winner) { 
+                const winnerId = Object.keys(game.players).find(id => game.players[id] === game.winner); 
+                setTimeout(() => { handleGameEnd(roomName, winnerId, Object.keys(game.players).find(id => id !== winnerId), false); }, 2500); 
+            } 
+        } 
+    });
 
     socket.on('quitGame', () => { const gameEntry = Object.entries(activeGames).find(([_, g]) => g.playerUsernames && g.playerUsernames[socket.id]); if (gameEntry) { const opponentId = Object.keys(gameEntry[1].playerUsernames).find(id => id !== socket.id); handleGameEnd(gameEntry[0], opponentId, socket.id, true); } });
     socket.on('disconnect', () => { onlinePlayersCount--; io.emit('onlineCount', onlinePlayersCount); matchmakingQueue = matchmakingQueue.filter(p => p.id !== socket.id); for (const code in privateRooms) { const room = privateRooms[code]; if (room.players.find(p => p.id === socket.id)) { io.to(`private_${code}`).emit('privateError', 'A player disconnected.'); delete privateRooms[code]; } } const gameEntry = Object.entries(activeGames).find(([_, g]) => g.playerUsernames && g.playerUsernames[socket.id]); if (gameEntry) { const opponentId = Object.keys(gameEntry[1].playerUsernames).find(id => id !== socket.id); handleGameEnd(gameEntry[0], opponentId, socket.id, true); } });

@@ -1,8 +1,10 @@
-const valOrder = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+// We define both a Low-Ace and High-Ace order for Run validation
+const lowOrder = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const highOrder = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 
 function getCardValue(val) {
     if (['J', 'Q', 'K'].includes(val)) return 10;
-    if (val === 'A') return 1;
+    if (val === 'A') return 1; // Keeps Ace as 1 point for scoring
     return parseInt(val);
 }
 
@@ -21,16 +23,23 @@ function isSet(cards) {
 function isRun(cards) {
     if (cards.length < 3) return false;
     const suit = cards[0].suit;
-    let sorted = [...cards].sort((a, b) => valOrder.indexOf(a.val) - valOrder.indexOf(b.val));
-    for (let i = 0; i < sorted.length; i++) {
-        if (sorted[i].suit !== suit) return false;
-        if (i > 0) {
-            let prevIdx = valOrder.indexOf(sorted[i-1].val);
-            let currIdx = valOrder.indexOf(sorted[i].val);
-            if (currIdx !== prevIdx + 1) return false;
+    
+    // 1. Check if they are all the same suit
+    for (let c of cards) { if (c.suit !== suit) return false; }
+    
+    let vals = cards.map(c => c.val);
+
+    // 2. Helper function to check if values are consecutive against a specific order array
+    const checkOrder = (orderArray) => {
+        let sorted = [...vals].sort((a, b) => orderArray.indexOf(a) - orderArray.indexOf(b));
+        for (let i = 1; i < sorted.length; i++) {
+            if (orderArray.indexOf(sorted[i]) !== orderArray.indexOf(sorted[i-1]) + 1) return false;
         }
-    }
-    return true;
+        return true;
+    };
+
+    // 3. Valid if it's a Low-Ace run (A-2-3) OR a High-Ace run (Q-K-A)
+    return checkOrder(lowOrder) || checkOrder(highOrder);
 }
 
 function calculateScoresAndEnd(game) {
@@ -112,7 +121,16 @@ module.exports = {
         
         if ((targetMeld.type === 'set' && isSet(testCards)) || (targetMeld.type === 'run' && isRun(testCards))) {
             targetMeld.cards.push(card);
-            if (targetMeld.type === 'run') targetMeld.cards.sort((a, b) => valOrder.indexOf(a.val) - valOrder.indexOf(b.val));
+            
+            // Re-sort the run based on the new logic
+            if (targetMeld.type === 'run') {
+                if (testCards.some(c => c.val === 'A') && testCards.some(c => c.val === 'K')) {
+                    targetMeld.cards.sort((a, b) => highOrder.indexOf(a.val) - highOrder.indexOf(b.val));
+                } else {
+                    targetMeld.cards.sort((a, b) => lowOrder.indexOf(a.val) - lowOrder.indexOf(b.val));
+                }
+            }
+            
             hand.splice(cardIndex, 1);
 
             if (hand.length === 0) calculateScoresAndEnd(game);
@@ -127,6 +145,16 @@ module.exports = {
         
         if (card) {
             game.discardPile.push(card);
+            
+            // NEW: Enforce a 5-card limit on the discard pile!
+            if (game.discardPile.length > 5) {
+                // Remove the oldest card (the one at index 0)
+                let oldestCard = game.discardPile.shift(); 
+                
+                // Pick a random spot in the deck and insert the card
+                let randomIndex = Math.floor(Math.random() * (game.deck.length + 1));
+                game.deck.splice(randomIndex, 0, oldestCard);
+            }
             
             if (hand.length === 0) {
                 calculateScoresAndEnd(game);

@@ -25,9 +25,9 @@ const gameInstructions = [
         desc: "First, position your fleet of 5 ships secretly on your grid. Then, take turns firing at your opponent's hidden grid. A successful hit marks an 'X', while a miss marks a dot. Sink all 5 of their ships before they sink yours!"
     },
     {
-        name: "Checkers",
-        icon: "👑",
-        desc: "Move your pieces diagonally forward. If an opponent's piece is right in front of you, jump over it to capture it! Reach the opposite end of the board to become a 'King', which allows that piece to move diagonally backward as well. Capture all opponent pieces to win."
+        name: "Mini Chess",
+        icon: "♚",
+        desc: "A fast-paced 4x8 variant of classic chess! You play horizontally. Move your pieces according to standard chess rules (Kings move 1 square, Queens in any direction, Rooks in straight lines, Bishops diagonally, and Pawns forward or diagonally to capture). Reach the opposite end with a pawn to promote it to a Queen. Capture the opponent's King to win!"
     },
     {
         name: "Crazy Eights",

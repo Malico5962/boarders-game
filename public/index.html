@@ -30,7 +30,7 @@
         .game-header { display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 750px; margin: 0 auto 20px auto; background: var(--bg-glass); backdrop-filter: blur(15px); padding: 15px 25px; border-radius: 30px; box-shadow: 0 15px 30px rgba(0,0,0,0.15); border: 2px solid rgba(255,255,255,0.5); box-sizing: border-box; } .player-info { display: flex; align-items: center; gap: 12px; background: #f1f2f6; padding: 8px 25px 8px 8px; border-radius: 50px; font-weight: 900; font-size: 1.2rem; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); } .player-info img { width: 50px; height: 50px; border-radius: 50%; background: white; border: 3px solid var(--secondary); object-fit: cover; box-shadow: 0 4px 10px rgba(0,0,0,0.1); } .player-rank { background: var(--accent); color: var(--text); padding: 3px 10px; border-radius: 20px; font-size: 0.9rem; margin-left: 5px; } #quitBtn { background: #ff4757; box-shadow: 0 6px 0 #ff1e33; font-size: 1rem; padding: 10px 20px; margin: 0; } 
         #player-role-display { font-size: 1.4rem; font-weight: 900; margin-bottom: 10px; color: white; text-shadow: 0 2px 5px rgba(0,0,0,0.2); } #turn-display { font-size: 1.8rem; font-family: 'Poppins'; font-weight: 900; margin-bottom: 25px; color: var(--secondary); background: white; padding: 15px 35px; border-radius: 30px; box-shadow: 0 15px 30px rgba(0,0,0,0.15); display: inline-block; border: 3px solid rgba(0,0,0,0.05); }
         
-        #sttt-container, #ttt-container, #c4-container, #dab-container, #bs-container, #chk-container { display: none; margin: 0 auto; }
+        #sttt-container, #ttt-container, #c4-container, #dab-container, #bs-container, #mc-container { display: none; margin: 0 auto; }
         
         /* SUPER TIC-TAC-TOE */
         #sttt-board { display: grid; grid-template-columns: repeat(3, max-content); gap: 10px; background: #2f3640; padding: 12px; border-radius: 20px; width: max-content; margin: 0 auto; box-shadow: 0 20px 50px rgba(0,0,0,0.3); } 
@@ -55,8 +55,23 @@
         /* DOTS AND BOXES */
         #dab-container { background: var(--bg-glass); padding: 30px; border-radius: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.15); width: max-content; margin: 0 auto; backdrop-filter: blur(10px); border: 2px solid rgba(255,255,255,0.5); } #dab-board { display: grid; grid-template-columns: 20px 70px 20px 70px 20px 70px 20px; grid-template-rows: 20px 70px 20px 70px 20px 70px 20px; gap: 0; background: #f1f2f6; border-radius: 15px; padding: 15px; box-shadow: inset 0 5px 15px rgba(0,0,0,0.05); } .dab-dot { width: 20px; height: 20px; background: #2d3436; border-radius: 50%; box-shadow: 0 3px 6px rgba(0,0,0,0.2); z-index: 2; position: relative; } .dab-hline { height: 20px; cursor: pointer; transition: all 0.2s; background: rgba(0,0,0,0.03); border-radius: 10px; margin: 0 -5px; } .dab-hline:hover { background: rgba(0,0,0,0.1); transform: scaleY(1.2); } .dab-vline { width: 20px; cursor: pointer; transition: all 0.2s; background: rgba(0,0,0,0.03); border-radius: 10px; margin: -5px 0; } .dab-vline:hover { background: rgba(0,0,0,0.1); transform: scaleX(1.2); } .dab-box { background: transparent; transition: all 0.4s; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-family: 'Poppins'; font-weight: 900; } .dab-line-red { background: var(--primary) !important; box-shadow: 0 0 10px rgba(255, 71, 87, 0.5); cursor: default; } .dab-line-blue { background: var(--secondary) !important; box-shadow: 0 0 10px rgba(30, 144, 255, 0.5); cursor: default; } .dab-box-red { background: rgba(255, 71, 87, 0.15); color: var(--primary); transform: scale(0.9); border-radius: 10px; } .dab-box-blue { background: rgba(30, 144, 255, 0.15); color: var(--secondary); transform: scale(0.9); border-radius: 10px; }
         
-        /* CHECKERS (NEW 4x8 GRID) */
-        #chk-board { display: grid; grid-template-columns: repeat(8, 60px); grid-template-rows: repeat(4, 60px); border: 15px solid #4a2311; border-radius: 15px; box-shadow: 0 25px 50px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.8); width: max-content; margin: 0 auto; background: #4a2311; gap: 0; } .chk-cell { width: 60px; height: 60px; display: flex; justify-content: center; align-items: center; } .chk-light { background: #e1b182; } .chk-dark { background: #8e4a23; cursor: pointer; box-shadow: inset 0 0 10px rgba(0,0,0,0.2); } .chk-dark:hover { filter: brightness(1.2); } .chk-piece { width: 48px; height: 48px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.8rem; color: white; pointer-events: none; transition: transform 0.2s; animation: hopIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; } @keyframes hopIn { 0% { transform: scale(0.6) translateY(-25px); opacity: 0.5; box-shadow: 0 20px 25px rgba(0,0,0,0.3); } 100% { transform: scale(1) translateY(0); opacity: 1; box-shadow: 0 6px 10px rgba(0,0,0,0.4), inset 0 -4px 6px rgba(0,0,0,0.3); } } .chk-red { background: radial-gradient(circle at 30% 30%, #ff6b81, #c0392b); border: 4px solid #8e2111; } .chk-black { background: radial-gradient(circle at 30% 30%, #576574, #222f3e); border: 4px solid #111; } .chk-selected { border: 4px solid var(--accent); box-shadow: 0 0 20px var(--accent), 0 10px 15px rgba(0,0,0,0.5); transform: translateY(-5px) scale(1.1); }
+        /* NEW: MINI CHESS (4x8 HORIZONTAL GRID) */
+        #mc-board { display: grid; grid-template-columns: repeat(8, 70px); grid-template-rows: repeat(4, 70px); border: 12px solid #2f3640; border-radius: 15px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); width: max-content; margin: 0 auto; gap: 0; } 
+        .mc-cell { width: 70px; height: 70px; display: flex; justify-content: center; align-items: center; font-size: 3.5rem; cursor: pointer; user-select: none; position: relative; } 
+        .mc-light { background: #f1f2f6; } 
+        .mc-dark { background: #ced6e0; } 
+        .mc-piece { transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; z-index: 10; }
+        
+        /* UPDATED Colors: Transparent text with a colored shadow forces the OS to obey your themes */
+        .mc-p1 { color: transparent; text-shadow: 0 0 0 var(--primary), 0 4px 6px rgba(0,0,0,0.3); } 
+        .mc-p2 { color: transparent; text-shadow: 0 0 0 var(--secondary), 0 4px 6px rgba(0,0,0,0.3); } 
+        
+        .mc-selected { background: rgba(255, 165, 2, 0.5) !important; box-shadow: inset 0 0 15px rgba(255, 165, 2, 0.8); }
+        .mc-selected .mc-piece { transform: scale(1.2) translateY(-5px); }
+        
+        /* Mini Chess Valid Move Dots */
+        .mc-dot { width: 20px; height: 20px; background: rgba(0, 0, 0, 0.15); border-radius: 50%; position: absolute; pointer-events: none; z-index: 5; }
+        .mc-dot-attack { width: 60px; height: 60px; border: 4px solid rgba(255, 71, 87, 0.6); background: transparent; border-radius: 50%; position: absolute; pointer-events: none; z-index: 5; }
 
         /* BATTLESHIP */
         .bs-grid-wrapper { display: flex; gap: 40px; justify-content: center; align-items: flex-start; } .bs-board-title { font-size: 1.5rem; font-family:'Poppins'; font-weight: 900; margin-bottom: 15px; color: white; text-shadow: 0 2px 5px rgba(0,0,0,0.2); } .bs-board { display: grid; grid-template-columns: repeat(10, 40px); grid-template-rows: repeat(10, 40px); gap: 3px; background: #0984e3; padding: 10px; border-radius: 15px; border: 6px solid #0652dd; box-shadow: 0 20px 40px rgba(0,0,0,0.3); } .bs-cell { width: 40px; height: 40px; background: rgba(255,255,255,0.8); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.5rem; cursor: pointer; transition: all 0.2s; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.1); } .bs-cell:hover { background: white; transform: translateY(-2px); } .bs-ship { background: #2f3542; color: white; } .bs-miss { background: #dfe6e9; color: #b2bec3; } .bs-hit { background: var(--primary); color: white; animation: popMark 0.3s ease; box-shadow: 0 0 15px var(--primary); } #bs-setup-menu { margin-top: 30px; background: var(--bg-glass); padding: 25px; border-radius: 20px; display: inline-block; backdrop-filter: blur(10px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); } .bs-ship-revealed { background: #eccc68 !important; color: white; opacity: 0.8; box-shadow: 0 0 10px #eccc68; animation: popMark 0.5s ease forwards; }
@@ -172,7 +187,9 @@
         <div id="ttt-container"><div id="ttt-board"></div></div>
         <div id="c4-container"><div id="c4-board"></div></div>
         <div id="dab-container"><h3 style="margin-top:0; font-size: 2rem;">🔴 <span id="dab-score-red">0</span> &nbsp;-&nbsp; <span id="dab-score-blue">0</span> 🔵</h3><div id="dab-board"></div></div>
-        <div id="chk-container"><div id="chk-board"></div></div> 
+        
+        <div id="mc-container"><div id="mc-board"></div></div> 
+
         <div id="bs-container">
             <div class="bs-grid-wrapper">
                 <div><div class="bs-board-title">Your Fleet</div><div id="bs-my-board" class="bs-board"></div></div>
@@ -354,7 +371,7 @@
                     <option value="Connect 4">🔴 Connect 4</option>
                     <option value="Dots and Boxes">🟦 Dots and Boxes</option>
                     <option value="Battleship">🚢 Battleship</option>
-                    <option value="Checkers">🔴 Checkers</option>
+                    <option value="Mini Chess">♚ Mini Chess</option>
                     <option value="Crazy Eights">🃏 Crazy Eights</option>
                     <option value="Rummy">🃏 Rummy</option>
                 </select>
