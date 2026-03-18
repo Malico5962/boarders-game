@@ -55,21 +55,16 @@
         /* DOTS AND BOXES */
         #dab-container { background: var(--bg-glass); padding: 30px; border-radius: 25px; box-shadow: 0 20px 40px rgba(0,0,0,0.15); width: max-content; margin: 0 auto; backdrop-filter: blur(10px); border: 2px solid rgba(255,255,255,0.5); } #dab-board { display: grid; grid-template-columns: 20px 70px 20px 70px 20px 70px 20px; grid-template-rows: 20px 70px 20px 70px 20px 70px 20px; gap: 0; background: #f1f2f6; border-radius: 15px; padding: 15px; box-shadow: inset 0 5px 15px rgba(0,0,0,0.05); } .dab-dot { width: 20px; height: 20px; background: #2d3436; border-radius: 50%; box-shadow: 0 3px 6px rgba(0,0,0,0.2); z-index: 2; position: relative; } .dab-hline { height: 20px; cursor: pointer; transition: all 0.2s; background: rgba(0,0,0,0.03); border-radius: 10px; margin: 0 -5px; } .dab-hline:hover { background: rgba(0,0,0,0.1); transform: scaleY(1.2); } .dab-vline { width: 20px; cursor: pointer; transition: all 0.2s; background: rgba(0,0,0,0.03); border-radius: 10px; margin: -5px 0; } .dab-vline:hover { background: rgba(0,0,0,0.1); transform: scaleX(1.2); } .dab-box { background: transparent; transition: all 0.4s; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-family: 'Poppins'; font-weight: 900; } .dab-line-red { background: var(--primary) !important; box-shadow: 0 0 10px rgba(255, 71, 87, 0.5); cursor: default; } .dab-line-blue { background: var(--secondary) !important; box-shadow: 0 0 10px rgba(30, 144, 255, 0.5); cursor: default; } .dab-box-red { background: rgba(255, 71, 87, 0.15); color: var(--primary); transform: scale(0.9); border-radius: 10px; } .dab-box-blue { background: rgba(30, 144, 255, 0.15); color: var(--secondary); transform: scale(0.9); border-radius: 10px; }
         
-        /* NEW: MINI CHESS (4x8 HORIZONTAL GRID) */
+        /* MINI CHESS */
         #mc-board { display: grid; grid-template-columns: repeat(8, 70px); grid-template-rows: repeat(4, 70px); border: 12px solid #2f3640; border-radius: 15px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); width: max-content; margin: 0 auto; gap: 0; } 
         .mc-cell { width: 70px; height: 70px; display: flex; justify-content: center; align-items: center; font-size: 3.5rem; cursor: pointer; user-select: none; position: relative; } 
         .mc-light { background: #f1f2f6; } 
         .mc-dark { background: #ced6e0; } 
         .mc-piece { transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; z-index: 10; }
-        
-        /* UPDATED Colors: Transparent text with a colored shadow forces the OS to obey your themes */
         .mc-p1 { color: transparent; text-shadow: 0 0 0 var(--primary), 0 4px 6px rgba(0,0,0,0.3); } 
         .mc-p2 { color: transparent; text-shadow: 0 0 0 var(--secondary), 0 4px 6px rgba(0,0,0,0.3); } 
-        
         .mc-selected { background: rgba(255, 165, 2, 0.5) !important; box-shadow: inset 0 0 15px rgba(255, 165, 2, 0.8); }
         .mc-selected .mc-piece { transform: scale(1.2) translateY(-5px); }
-        
-        /* Mini Chess Valid Move Dots */
         .mc-dot { width: 20px; height: 20px; background: rgba(0, 0, 0, 0.15); border-radius: 50%; position: absolute; pointer-events: none; z-index: 5; }
         .mc-dot-attack { width: 60px; height: 60px; border: 4px solid rgba(255, 71, 87, 0.6); background: transparent; border-radius: 50%; position: absolute; pointer-events: none; z-index: 5; }
 
@@ -154,7 +149,10 @@
             <img id="dashPfpDisplay" src="" alt="Profile Pic">
             <div class="dash-details">
                 <h2 style="margin: 0; font-size: 1.8rem;">Hi, <span id="playerNameDisplay">Player</span>! 👋</h2>
-                <p style="margin: 5px 0; font-size:1.2rem; font-weight:900;">Rank: <span id="playerRankDisplay" style="color:var(--primary);">100</span> ⭐</p>
+                <p style="margin: 5px 0; font-size:1.2rem; font-weight:900;">
+                    Rank: <span id="playerRankDisplay" style="color:var(--primary);">100</span> ⭐ | 
+                    Bucks: <span id="playerBucksDisplay" style="color:#2ed573;">0</span> 💵
+                </p>
                 <i id="playerDescDisplay" style="color: #636e72; font-size: 1rem;"></i>
             </div>
         </div>
@@ -162,6 +160,12 @@
             <button id="findMatchBtn" style="width: 48%; font-size: 1rem; padding: 15px 5px;">🔍 Find Match</button>
             <button id="privateGameMenuBtn" style="width: 48%; background: var(--accent); color: var(--text); box-shadow: 0 8px 0 #e19000; font-size: 1rem; padding: 15px 5px;">🔒 Private</button>
         </div>
+        
+        <div style="display: flex; justify-content: space-between; width: 100%; margin-top: 10px;">
+            <button id="openShopBtn" style="width: 48%; background: #2ed573; box-shadow: 0 8px 0 #27ae60; font-size: 1rem; color: white; padding: 15px 5px;">🛒 Shop</button>
+            <button id="openLockerBtn" style="width: 48%; background: #ff6b81; box-shadow: 0 8px 0 #ff4757; font-size: 1rem; color: white; padding: 15px 5px;">🎒 Locker</button>
+        </div>
+
         <div style="display: flex; justify-content: space-between; width: 100%; margin-top: 10px;">
             <button id="viewLeaderboardBtn" style="width: 48%; background: var(--secondary); box-shadow: 0 8px 0 var(--secondary-dark); font-size: 1rem; padding: 15px 5px;">🏆 Top 10</button>
             <button id="viewStatsBtn" style="width: 48%; background: #00b894; box-shadow: 0 8px 0 #009477; font-size: 1rem; color: white; padding: 15px 5px;">📊 My Stats</button>
@@ -229,6 +233,22 @@
                 <h3 style="margin:0; color:white; text-shadow:0 2px 4px rgba(0,0,0,0.3);">Your Hand</h3>
                 <div id="rm-my-hand" class="rm-hand"></div>
             </div>
+        </div>
+    </div>
+
+    <div id="shop-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 style="font-size: 2.5rem; margin-top:0;">Shop 🛒</h2>
+            <p style="font-size: 1.2rem; font-weight: 900; color: #a4b0be;">Coming soon...</p>
+            <button id="closeShopBtn" style="width:100%; margin-top: 20px; background: #ced6e0; color: var(--text); box-shadow: 0 8px 0 #a4b0be;">Close</button>
+        </div>
+    </div>
+
+    <div id="locker-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 style="font-size: 2.5rem; margin-top:0;">Locker 🎒</h2>
+            <p style="font-size: 1.2rem; font-weight: 900; color: #a4b0be;">Coming soon...</p>
+            <button id="closeLockerBtn" style="width:100%; margin-top: 20px; background: #ced6e0; color: var(--text); box-shadow: 0 8px 0 #a4b0be;">Close</button>
         </div>
     </div>
 
@@ -385,6 +405,7 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/stats.js"></script>
+    <script src="/shop.js"></script>
     <script src="/howtoplay.js"></script>
     <script src="/app.js"></script>
 </body>

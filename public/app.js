@@ -12,12 +12,14 @@ const c4Container = document.getElementById('c4-container'); const c4Board = doc
 const dabContainer = document.getElementById('dab-container'); const dabBoard = document.getElementById('dab-board');
 const bsContainer = document.getElementById('bs-container'); const bsMyBoard = document.getElementById('bs-my-board'); const bsTrackingBoard = document.getElementById('bs-tracking-board');
 
-// NEW: MINI CHESS
 const mcContainer = document.getElementById('mc-container'); const mcBoard = document.getElementById('mc-board');
 let mcSelected = null; let lastChessGame = null;
 const chessIcons = { 1: '♚\uFE0E', 2: '♛\uFE0E', 3: '♝\uFE0E', 4: '♜\uFE0E', 5: '♟\uFE0E' };
 
-// CHESS CLIENT-SIDE HELPERS (For Valid Move Dots)
+// COSMETIC HELPERS
+const COLOR_MAP = { red: '#ff4757', orange: '#ffa502', yellow: '#eccc68', green: '#2ed573', blue: '#1e90ff', purple: '#a29bfe', none: null };
+window.p1Color = 'var(--primary)'; window.p2Color = 'var(--secondary)';
+
 function getChessPlayerClient(piece) { if (piece >= 11 && piece <= 15) return 'Player 1'; if (piece >= 21 && piece <= 25) return 'Player 2'; return null; }
 function checkLineOfSightClient(board, fromR, fromC, toR, toC) { let rStep = toR === fromR ? 0 : (toR - fromR) / Math.abs(toR - fromR); let cStep = toC === fromC ? 0 : (toC - fromC) / Math.abs(toC - fromC); let r = fromR + rStep; let c = fromC + cStep; while (r !== toR || c !== toC) { if (board[r][c] !== 0) return false; r += rStep; c += cStep; } return true; }
 function isValidChessMoveClient(board, player, fromR, fromC, toR, toC) { if (fromR === toR && fromC === toC) return false; let piece = board[fromR][fromC]; let target = board[toR][toC]; if (target !== 0 && getChessPlayerClient(target) === player) return false; let dr = toR - fromR; let dc = toC - fromC; let adr = Math.abs(dr); let adc = Math.abs(dc); let type = piece % 10; if (type === 1) return adr <= 1 && adc <= 1; if (type === 2) return (adr === adc || adr === 0 || adc === 0) && checkLineOfSightClient(board, fromR, fromC, toR, toC); if (type === 3) return (adr === adc) && checkLineOfSightClient(board, fromR, fromC, toR, toC); if (type === 4) return (adr === 0 || adc === 0) && checkLineOfSightClient(board, fromR, fromC, toR, toC); if (type === 5) { let dir = player === 'Player 1' ? 1 : -1; if (dc === dir && adr === 0 && target === 0) return true; if (dc === dir && adr === 1 && target !== 0) return true; return false; } return false; }
@@ -43,7 +45,18 @@ async function handleAuth(action) {
 
 function updateDashboardUI() {
     playerNameDisplay.innerText = myUserObj.username; playerRankDisplay.innerText = myUserObj.rank;
-    document.getElementById('dashPfpDisplay').src = myUserObj.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${myUserObj.username}`;
+    document.getElementById('playerBucksDisplay').innerText = myUserObj.bucks || 0; 
+    
+    // Apply Dashboard Cosmetics
+    const dashPfp = document.getElementById('dashPfpDisplay');
+    dashPfp.src = myUserObj.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${myUserObj.username}`;
+    
+    const borderEq = myUserObj.equipped?.border?.replace('border_', '') || 'none';
+    const bannerEq = myUserObj.equipped?.banner?.replace('banner_', '') || 'none';
+    
+    dashPfp.style.borderColor = COLOR_MAP[borderEq] || 'white';
+    document.querySelector('.dash-profile-top').style.background = COLOR_MAP[bannerEq] ? `${COLOR_MAP[bannerEq]}40` : 'rgba(255,255,255,0.5)'; // Add transparency
+
     document.getElementById('playerDescDisplay').innerText = `"${myUserObj.description}"`;
 }
 
@@ -66,6 +79,9 @@ document.getElementById('viewStatsBtn').addEventListener('click', () => { if (wi
 document.getElementById('closeStatsBtn').addEventListener('click', () => { document.getElementById('stats-modal').style.display = 'none'; });
 document.getElementById('howToPlayBtn').addEventListener('click', () => { if (window.renderHowToPlay) window.renderHowToPlay(); document.getElementById('howtoplay-modal').style.display = 'flex'; });
 document.getElementById('closeHowToPlayBtn').addEventListener('click', () => { document.getElementById('howtoplay-modal').style.display = 'none'; });
+
+document.getElementById('openShopBtn').addEventListener('click', () => { if (window.renderShop) window.renderShop(); document.getElementById('shop-modal').style.display = 'flex'; });
+document.getElementById('openLockerBtn').addEventListener('click', () => { if (window.renderLocker) window.renderLocker(); document.getElementById('locker-modal').style.display = 'flex'; });
 
 findMatchBtn.addEventListener('click', () => { socket.emit('joinQueue', myUsername); statusDiv.innerText = 'Searching for a match... ⏳'; findMatchBtn.disabled = true; }); 
 document.getElementById('quitBtn').addEventListener('click', () => { socket.emit('quitGame'); });
@@ -115,7 +131,7 @@ for (let r = 0; r < 4; r++) {
                         socket.emit('makeChessMove', { roomName: currentRoom, fromR: mcSelected.r, fromC: mcSelected.c, toR: r, toC: c }); 
                     }
                     mcSelected = null;
-                    updateChessUI(lastChessGame); // clear dots
+                    updateChessUI(lastChessGame); 
                 }
             } else {
                 if (isMyPiece) { mcSelected = {r, c}; updateChessUI(lastChessGame); }
@@ -129,12 +145,27 @@ socket.on('startGame', (gameState) => {
     currentRoom = gameState.roomName; currentGameType = gameState.gameType; mySymbol = gameState.players[socket.id]; isPrivateGame = gameState.isPrivate; 
     
     const p1Data = gameState.playerData[Object.keys(gameState.players)[0]]; const p2Data = gameState.playerData[Object.keys(gameState.players)[1]];
+    
+    // EXTRACT AND APPLY IN-GAME COSMETICS
+    window.p1Color = COLOR_MAP[p1Data.equipped?.piece?.replace('piece_', '')] || 'var(--primary)';
+    window.p2Color = COLOR_MAP[p2Data.equipped?.piece?.replace('piece_', '')] || 'var(--secondary)';
+    
+    const p1Border = COLOR_MAP[p1Data.equipped?.border?.replace('border_', '')] || 'var(--primary)';
+    const p2Border = COLOR_MAP[p2Data.equipped?.border?.replace('border_', '')] || 'var(--secondary)';
+    const p1Banner = COLOR_MAP[p1Data.equipped?.banner?.replace('banner_', '')] || '#f1f2f6';
+    const p2Banner = COLOR_MAP[p2Data.equipped?.banner?.replace('banner_', '')] || '#f1f2f6';
+
+    document.getElementById('p1-pfp').style.borderColor = p1Border;
+    document.getElementById('p2-pfp').style.borderColor = p2Border;
+    document.getElementById('p1-info').style.background = p1Banner === '#f1f2f6' ? p1Banner : `${p1Banner}40`;
+    document.getElementById('p2-info').style.background = p2Banner === '#f1f2f6' ? p2Banner : `${p2Banner}40`;
+
     document.getElementById('p1-name').innerText = p1Data.username; document.getElementById('p1-rank').innerText = `${p1Data.rank}⭐`; document.getElementById('p1-pfp').src = p1Data.pfp;
     document.getElementById('p2-name').innerText = p2Data.username; document.getElementById('p2-rank').innerText = `${p2Data.rank}⭐`; document.getElementById('p2-pfp').src = p2Data.pfp;
 
     if (currentGameType === 'Connect 4') roleDisplay.innerHTML = `You are playing as: <strong>${mySymbol === 'Red' ? '🔴 Red' : '🟡 Yellow'}</strong>`;
     else if (currentGameType === 'Dots and Boxes') roleDisplay.innerHTML = `You are playing as: <strong>${mySymbol === 'Red' ? '🔴 Red' : '🔵 Blue'}</strong>`;
-    else if (currentGameType === 'Super Tic-Tac-Toe' || currentGameType === 'Endless Tic-Tac-Toe') roleDisplay.innerHTML = `You are playing as: <strong style="color: ${mySymbol === 'X' ? 'var(--primary)' : 'var(--secondary)'};">${mySymbol}</strong>`;
+    else if (currentGameType === 'Super Tic-Tac-Toe' || currentGameType === 'Endless Tic-Tac-Toe') roleDisplay.innerHTML = `You are playing as: <strong style="color: ${mySymbol === 'X' ? window.p1Color : window.p2Color};">${mySymbol}</strong>`;
     else if (currentGameType === 'Battleship') roleDisplay.innerHTML = `You are Commander <strong>${mySymbol}</strong>`;
     else if (currentGameType === 'Mini Chess') roleDisplay.innerHTML = `You are <strong>${mySymbol === 'Player 1' ? '🔴 Player 1' : '🔵 Player 2'}</strong>`;
     else if (currentGameType === 'Crazy Eights' || currentGameType === 'Rummy') roleDisplay.innerHTML = `You are <strong>${mySymbol}</strong>`;
@@ -157,7 +188,7 @@ socket.on('startGame', (gameState) => {
 socket.on('updateTTTEndlessBoard', updateTTTEndlessUI);
 function updateTTTEndlessUI(game) {
     turnDisplay.innerText = game.turn === mySymbol ? "🎯 Your Turn!" : "⏳ Opponent's Turn...";
-    turnDisplay.style.color = game.turn === mySymbol ? "var(--primary)" : "var(--secondary)";
+    turnDisplay.style.color = game.turn === mySymbol ? (mySymbol === 'X' ? window.p1Color : window.p2Color) : "var(--secondary)";
 
     for (let r = 0; r < 3; r++) {
         for (let c = 0; c < 3; c++) {
@@ -165,63 +196,73 @@ function updateTTTEndlessUI(game) {
             cell.innerHTML = '';
             cell.className = 'ttt-cell'; 
             if (game.board[r][c]) {
-                const isX = game.board[r][c] === 'X';
-                cell.innerHTML = `<span class="${isX ? 'mark-x' : 'mark-o'}">${game.board[r][c]}</span>`;
+                const color = game.board[r][c] === 'X' ? window.p1Color : window.p2Color;
+                cell.innerHTML = `<span style="color: ${color}; animation: drawMark 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;">${game.board[r][c]}</span>`;
             }
         }
     }
 
-    if (game.history['X'].length === 3) {
-        let oldestX = game.history['X'][0];
-        const span = document.getElementById(`ttt-${oldestX.r}-${oldestX.c}`).querySelector('span');
-        if (span) span.classList.add('flicker-piece');
-    }
-    if (game.history['O'].length === 3) {
-        let oldestO = game.history['O'][0];
-        const span = document.getElementById(`ttt-${oldestO.r}-${oldestO.c}`).querySelector('span');
-        if (span) span.classList.add('flicker-piece');
-    }
-
-    if (game.winLine) {
-        game.winLine.forEach(([r, c]) => {
-            document.getElementById(`ttt-${r}-${c}`).classList.add('sttt-win-pulse');
-        });
-    }
+    if (game.history['X'].length === 3) { let oldestX = game.history['X'][0]; const span = document.getElementById(`ttt-${oldestX.r}-${oldestX.c}`).querySelector('span'); if (span) span.classList.add('flicker-piece'); }
+    if (game.history['O'].length === 3) { let oldestO = game.history['O'][0]; const span = document.getElementById(`ttt-${oldestO.r}-${oldestO.c}`).querySelector('span'); if (span) span.classList.add('flicker-piece'); }
+    if (game.winLine) { game.winLine.forEach(([r, c]) => { document.getElementById(`ttt-${r}-${c}`).classList.add('sttt-win-pulse'); }); }
 }
 
 function randomizeBattleship() { localBattleshipBoard = Array(10).fill(null).map(() => Array(10).fill(0)); const ships = [5, 4, 3, 3, 2]; for (let shipLen of ships) { let placed = false; while (!placed) { const isHoriz = Math.random() > 0.5; const r = Math.floor(Math.random() * (isHoriz ? 10 : 10 - shipLen)); const c = Math.floor(Math.random() * (isHoriz ? 10 - shipLen : 10)); let canPlace = true; for (let i = 0; i < shipLen; i++) { if (isHoriz && localBattleshipBoard[r][c + i] !== 0) canPlace = false; if (!isHoriz && localBattleshipBoard[r + i][c] !== 0) canPlace = false; } if (canPlace) { for (let i = 0; i < shipLen; i++) { if (isHoriz) localBattleshipBoard[r][c + i] = 1; else localBattleshipBoard[r + i][c] = 1; } placed = true; } } } drawLocalBattleship(); }
 function drawLocalBattleship() { for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const cell = document.getElementById(`bs-my-${r}-${c}`); cell.className = localBattleshipBoard[r][c] === 1 ? 'bs-cell bs-ship' : 'bs-cell'; } } }
 document.getElementById('bs-randomize-btn').addEventListener('click', randomizeBattleship); document.getElementById('bs-ready-btn').addEventListener('click', () => { document.getElementById('bs-setup-menu').style.display = 'none'; socket.emit('submitBattleshipBoard', { roomName: currentRoom, board: localBattleshipBoard }); });
-socket.on('battleshipWaiting', () => { turnDisplay.innerText = "Waiting for opponent to ready up..."; turnDisplay.style.color = "var(--secondary)"; }); socket.on('battleshipStartPlaying', (data) => { turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn to Fire!" : "⏳ Incoming Fire..."; turnDisplay.style.color = data.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; });
-socket.on('updateBattleshipBoard', (data) => { turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn to Fire!" : "⏳ Incoming Fire..."; turnDisplay.style.color = data.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const myCell = document.getElementById(`bs-my-${r}-${c}`); if (data.myBoard[r][c] === 1) myCell.className = 'bs-cell bs-ship'; else if (data.myBoard[r][c] === 2) { myCell.className = 'bs-cell bs-miss'; myCell.innerText = '•'; } else if (data.myBoard[r][c] === 3) { myCell.className = 'bs-cell bs-hit'; myCell.innerText = 'X'; } const targetCell = document.getElementById(`bs-target-${r}-${c}`); if (data.trackingBoard[r][c] === 0) { targetCell.className = 'bs-cell'; targetCell.innerText = ''; } else if (data.trackingBoard[r][c] === 2) { targetCell.className = 'bs-cell bs-miss'; targetCell.innerText = '•'; } else if (data.trackingBoard[r][c] === 3) { targetCell.className = 'bs-cell bs-hit'; targetCell.innerText = 'X'; } } } });
+socket.on('battleshipWaiting', () => { turnDisplay.innerText = "Waiting for opponent to ready up..."; turnDisplay.style.color = "var(--secondary)"; }); socket.on('battleshipStartPlaying', (data) => { turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn to Fire!" : "⏳ Incoming Fire..."; turnDisplay.style.color = data.turn === mySymbol ? window.p1Color : "var(--secondary)"; });
+socket.on('updateBattleshipBoard', (data) => { turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn to Fire!" : "⏳ Incoming Fire..."; turnDisplay.style.color = data.turn === mySymbol ? window.p1Color : "var(--secondary)"; for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const myCell = document.getElementById(`bs-my-${r}-${c}`); if (data.myBoard[r][c] === 1) myCell.className = 'bs-cell bs-ship'; else if (data.myBoard[r][c] === 2) { myCell.className = 'bs-cell bs-miss'; myCell.innerText = '•'; } else if (data.myBoard[r][c] === 3) { myCell.className = 'bs-cell bs-hit'; myCell.innerText = 'X'; } const targetCell = document.getElementById(`bs-target-${r}-${c}`); if (data.trackingBoard[r][c] === 0) { targetCell.className = 'bs-cell'; targetCell.innerText = ''; } else if (data.trackingBoard[r][c] === 2) { targetCell.className = 'bs-cell bs-miss'; targetCell.innerText = '•'; } else if (data.trackingBoard[r][c] === 3) { targetCell.className = 'bs-cell bs-hit'; targetCell.innerText = 'X'; } } } });
 socket.on('revealBattleship', (secretBoards) => { const opponentId = Object.keys(secretBoards).find(id => id !== socket.id); const opponentBoard = secretBoards[opponentId]; for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const targetCell = document.getElementById(`bs-target-${r}-${c}`); if (opponentBoard[r][c] === 1 && !targetCell.classList.contains('bs-hit')) { targetCell.className = 'bs-cell bs-ship-revealed'; targetCell.innerText = '🚢'; } } } });
 
 socket.on('updateBoard', updateSTTTUI);
 function updateSTTTUI(game) { 
-    turnDisplay.innerText = game.turn === mySymbol ? "🎯 Your Turn!" : "⏳ Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; 
+    turnDisplay.innerText = game.turn === mySymbol ? "🎯 Your Turn!" : "⏳ Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? (mySymbol === 'X' ? window.p1Color : window.p2Color) : "var(--secondary)"; 
     document.querySelectorAll('.macro-cell').forEach(c => { c.classList.remove('sttt-win-pulse'); c.classList.remove('highlight-active'); c.classList.remove('highlight-waiting'); });
 
     for (let i = 0; i < 9; i++) { 
         const macroDiv = document.getElementById(`macro-${i}`); 
         if (game.macroBoard[i]) { 
-            const winnerClass = game.macroBoard[i] === 'X' ? 'winner-x' : 'winner-o'; 
-            if (!macroDiv.innerHTML.includes('macro-winner')) { macroDiv.innerHTML = `<div class="macro-winner ${winnerClass}">${game.macroBoard[i] === 'Tie' ? '-' : game.macroBoard[i]}</div>`; macroDiv.className = 'macro-cell disabled'; } 
+            const winnerColor = game.macroBoard[i] === 'X' ? window.p1Color : window.p2Color;
+            if (!macroDiv.innerHTML.includes('macro-winner')) { macroDiv.innerHTML = `<div class="macro-winner" style="color: ${winnerColor}">${game.macroBoard[i] === 'Tie' ? '-' : game.macroBoard[i]}</div>`; macroDiv.className = 'macro-cell disabled'; } 
             continue; 
         } 
         if (!game.winner && (game.nextBoard === -1 || game.nextBoard === i)) macroDiv.classList.add(game.turn === mySymbol ? 'highlight-active' : 'highlight-waiting'); else macroDiv.classList.add('disabled');
-        for (let j = 0; j < 9; j++) { const microDiv = document.getElementById(`micro-${i}-${j}`); if (microDiv) { const cellValue = game.board[i][j]; if (cellValue && microDiv.innerHTML === '') microDiv.innerHTML = `<span class="${cellValue === 'X' ? 'mark-x' : 'mark-o'}">${cellValue}</span>`; } } 
+        for (let j = 0; j < 9; j++) { const microDiv = document.getElementById(`micro-${i}-${j}`); if (microDiv) { const cellValue = game.board[i][j]; if (cellValue && microDiv.innerHTML === '') { const color = cellValue === 'X' ? window.p1Color : window.p2Color; microDiv.innerHTML = `<span style="color: ${color}; animation: drawMark 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;">${cellValue}</span>`; } } } 
     } 
     if (game.winLine) { game.winLine.forEach(i => { document.getElementById(`macro-${i}`).classList.add('sttt-win-pulse'); }); }
 }
 
-socket.on('updateC4Board', (game) => { turnDisplay.innerText = game.turn === mySymbol ? "🔴 Your Turn!" : "🟡 Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? (mySymbol==='Red'?'var(--primary)':'var(--accent)') : (mySymbol==='Red'?'var(--accent)':'var(--primary)'); document.querySelectorAll('.c4-cell').forEach(c => c.classList.remove('c4-win-pulse')); for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = document.getElementById(`c4-${r}-${c}`); if (game.board[r][c] === 'Red' && !cell.classList.contains('c4-red')) cell.className = 'c4-cell c4-red'; else if (game.board[r][c] === 'Yellow' && !cell.classList.contains('c4-yellow')) cell.className = 'c4-cell c4-yellow'; } } if (game.winLine) { game.winLine.forEach(([r, c]) => { document.getElementById(`c4-${r}-${c}`).classList.add('c4-win-pulse'); }); } });
-socket.on('updateDABBoard', (game) => { turnDisplay.innerText = game.turn === mySymbol ? (mySymbol==='Red'?'🔴 Your Turn!':'🔵 Your Turn!') : "⏳ Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? (mySymbol==='Red'?'var(--primary)':'var(--secondary)') : (mySymbol==='Red'?'var(--secondary)':'var(--primary)'); document.getElementById('dab-score-red').innerText = game.scores['Red']; document.getElementById('dab-score-blue').innerText = game.scores['Blue']; for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const hLine = document.getElementById(`h-${r}-${c}`); if (game.hLines[r][c] === 'Red') hLine.className = 'dab-hline dab-line-red'; else if (game.hLines[r][c] === 'Blue') hLine.className = 'dab-hline dab-line-blue'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const vLine = document.getElementById(`v-${r}-${c}`); if (game.vLines[r][c] === 'Red') vLine.className = 'dab-vline dab-line-red'; else if (game.vLines[r][c] === 'Blue') vLine.className = 'dab-vline dab-line-blue'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const box = document.getElementById(`box-${r}-${c}`); if (game.boxes[r][c] === 'Red') { box.className = 'dab-box dab-box-red'; box.innerText = 'R'; } else if (game.boxes[r][c] === 'Blue') { box.className = 'dab-box dab-box-blue'; box.innerText = 'B'; } } } });
+socket.on('updateC4Board', (game) => { 
+    turnDisplay.innerText = game.turn === mySymbol ? "🔴 Your Turn!" : "🟡 Opponent's Turn..."; 
+    turnDisplay.style.color = game.turn === mySymbol ? (mySymbol==='Red'?window.p1Color:window.p2Color) : (mySymbol==='Red'?window.p2Color:window.p1Color); 
+    document.querySelectorAll('.c4-cell').forEach(c => c.classList.remove('c4-win-pulse')); 
+    for (let r = 0; r < 6; r++) { 
+        for (let c = 0; c < 7; c++) { 
+            const cell = document.getElementById(`c4-${r}-${c}`); 
+            if (game.board[r][c] === 'Red' && !cell.hasAttribute('data-filled')) { 
+                cell.setAttribute('data-filled', 'true'); cell.style.background = `radial-gradient(circle at 30% 30%, #fff, ${window.p1Color})`; cell.style.boxShadow = `0 6px 12px rgba(0,0,0,0.4), inset 0 -4px 8px rgba(0,0,0,0.3)`; cell.style.border = 'none'; cell.style.animation = 'slideDown 0.4s ease-in forwards';
+            } else if (game.board[r][c] === 'Yellow' && !cell.hasAttribute('data-filled')) { 
+                cell.setAttribute('data-filled', 'true'); cell.style.background = `radial-gradient(circle at 30% 30%, #fff, ${window.p2Color})`; cell.style.boxShadow = `0 6px 12px rgba(0,0,0,0.4), inset 0 -4px 8px rgba(0,0,0,0.3)`; cell.style.border = 'none'; cell.style.animation = 'slideDown 0.4s ease-in forwards';
+            } 
+        } 
+    } 
+    if (game.winLine) { game.winLine.forEach(([r, c]) => { document.getElementById(`c4-${r}-${c}`).classList.add('c4-win-pulse'); }); } 
+});
+
+socket.on('updateDABBoard', (game) => { 
+    turnDisplay.innerText = game.turn === mySymbol ? (mySymbol==='Red'?'🔴 Your Turn!':'🔵 Your Turn!') : "⏳ Opponent's Turn..."; 
+    turnDisplay.style.color = game.turn === mySymbol ? (mySymbol==='Red'?window.p1Color:window.p2Color) : (mySymbol==='Red'?window.p2Color:window.p1Color); 
+    document.getElementById('dab-score-red').innerText = game.scores['Red']; document.getElementById('dab-score-blue').innerText = game.scores['Blue']; 
+    for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const hLine = document.getElementById(`h-${r}-${c}`); if (game.hLines[r][c] === 'Red') { hLine.style.background = window.p1Color; hLine.style.boxShadow = `0 0 10px ${window.p1Color}`; hLine.style.cursor = 'default'; } else if (game.hLines[r][c] === 'Blue') { hLine.style.background = window.p2Color; hLine.style.boxShadow = `0 0 10px ${window.p2Color}`; hLine.style.cursor = 'default'; } } } 
+    for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const vLine = document.getElementById(`v-${r}-${c}`); if (game.vLines[r][c] === 'Red') { vLine.style.background = window.p1Color; vLine.style.boxShadow = `0 0 10px ${window.p1Color}`; vLine.style.cursor = 'default'; } else if (game.vLines[r][c] === 'Blue') { vLine.style.background = window.p2Color; vLine.style.boxShadow = `0 0 10px ${window.p2Color}`; vLine.style.cursor = 'default'; } } } 
+    for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const box = document.getElementById(`box-${r}-${c}`); if (game.boxes[r][c] === 'Red') { box.style.background = window.p1Color + '25'; box.style.color = window.p1Color; box.innerText = 'R'; box.style.transform = 'scale(0.9)'; box.style.borderRadius = '10px'; } else if (game.boxes[r][c] === 'Blue') { box.style.background = window.p2Color + '25'; box.style.color = window.p2Color; box.innerText = 'B'; box.style.transform = 'scale(0.9)'; box.style.borderRadius = '10px'; } } } 
+});
 
 socket.on('updateChessBoard', updateChessUI); 
 function updateChessUI(game) { 
     lastChessGame = game; 
     turnDisplay.innerText = game.turn === mySymbol ? "🎯 Your Turn!" : "⏳ Opponent's Turn..."; 
-    turnDisplay.style.color = game.turn === mySymbol ? "var(--primary)" : "var(--secondary)"; 
+    turnDisplay.style.color = game.turn === mySymbol ? (mySymbol === 'Player 1' ? window.p1Color : window.p2Color) : "var(--secondary)"; 
     if (game.turn !== mySymbol) mcSelected = null; 
     
     for (let r = 0; r < 4; r++) { 
@@ -233,7 +274,10 @@ function updateChessUI(game) {
             
             if (p !== 0) { 
                 const pieceDiv = document.createElement('div'); 
-                pieceDiv.className = `mc-piece ${p >= 20 ? 'mc-p2' : 'mc-p1'}`; 
+                pieceDiv.className = 'mc-piece';
+                const pColor = p >= 20 ? window.p2Color : window.p1Color;
+                pieceDiv.style.color = 'transparent';
+                pieceDiv.style.textShadow = `0 0 0 ${pColor}, 0 4px 6px rgba(0,0,0,0.3)`; 
                 pieceDiv.innerText = chessIcons[p % 10]; 
                 cell.appendChild(pieceDiv); 
             } 
@@ -316,7 +360,7 @@ socket.on('updateRummy', (data) => {
 });
 
 document.addEventListener('keydown', (e) => { 
-    if (e.key === 'Escape') { document.getElementById('howtoplay-modal').style.display = 'none'; document.getElementById('stats-modal').style.display = 'none'; document.getElementById('leaderboard-modal').style.display = 'none'; document.getElementById('private-menu-modal').style.display = 'none'; document.getElementById('host-modal').style.display = 'none'; document.getElementById('join-modal').style.display = 'none'; document.getElementById('account-modal').style.display = 'none'; document.getElementById('returnToResultsBtn').click(); }
+    if (e.key === 'Escape') { document.getElementById('howtoplay-modal').style.display = 'none'; document.getElementById('stats-modal').style.display = 'none'; document.getElementById('leaderboard-modal').style.display = 'none'; document.getElementById('private-menu-modal').style.display = 'none'; document.getElementById('host-modal').style.display = 'none'; document.getElementById('join-modal').style.display = 'none'; document.getElementById('account-modal').style.display = 'none'; document.getElementById('shop-modal').style.display = 'none'; document.getElementById('locker-modal').style.display = 'none'; document.getElementById('returnToResultsBtn').click(); }
     if (e.key === 'Enter') { const active = document.activeElement; if (active === document.getElementById('chatInput')) document.getElementById('sendChatBtn').click(); else if (active === document.getElementById('hostCodeInput')) document.getElementById('confirmHostBtn').click(); else if (active === document.getElementById('joinCodeInput')) document.getElementById('confirmJoinBtn').click(); else if (active === document.getElementById('usernameInput') || active === document.getElementById('passwordInput')) document.getElementById('loginBtn').click(); }
 }); 
 
@@ -325,15 +369,22 @@ socket.on('gameOverScreen', (data) => {
     if (currentGameType && (amIWinner || amILoser || data.isTie)) { if (window.recordGameResult) window.recordGameResult(currentGameType, amIWinner, data.isTie); }
     currentGameType = null; const title = document.getElementById('go-title'); const msg = document.getElementById('go-message'); const points = document.getElementById('go-points'); const modal = document.getElementById('game-over-modal'); const playersContainer = document.getElementById('go-players-container'); 
     
+    if (amIWinner && data.newWinnerBucks !== undefined) { myUserObj.bucks = data.newWinnerBucks; }
+
     const rummyScoresDiv = document.getElementById('go-rummy-scores');
     if (data.rummyScores && !data.isQuit) { rummyScoresDiv.style.display = 'block'; rummyScoresDiv.innerHTML = `Final Match Scores:<br>Player 1: ${data.rummyScores['Player 1']} pts | Player 2: ${data.rummyScores['Player 2']} pts`; } else { rummyScoresDiv.style.display = 'none'; }
 
     if (data.isTie) { title.innerText = "It's a Tie! 🤝"; title.className = "win-text"; msg.innerText = "Good game!"; points.innerText = "+0 Points"; points.className = ""; playersContainer.style.display = 'none';
     } else { 
-        playersContainer.style.display = 'flex'; title.innerText = amIWinner ? "Victory! 🏆" : "Defeat! 💀"; title.className = amIWinner ? "win-text" : "lose-text"; msg.innerText = data.isQuit ? (amIWinner ? "Your opponent fled!" : "You quit the game!") : (amIWinner ? "You crushed them!" : "Better luck next time."); points.innerText = amIWinner ? `+${data.pointsWon} Points` : `-${data.pointsLost} Points`; points.className = amIWinner ? "win-text" : "lose-text"; 
+        playersContainer.style.display = 'flex'; title.innerText = amIWinner ? "Victory! 🏆" : "Defeat! 💀"; title.className = amIWinner ? "win-text" : "lose-text"; msg.innerText = data.isQuit ? (amIWinner ? "Your opponent fled!" : "You quit the game!") : (amIWinner ? "You crushed them!" : "Better luck next time."); points.innerText = amIWinner ? `+${data.pointsWon} Points\n+5 Bucks 💵` : `-${data.pointsLost} Points`; points.className = amIWinner ? "win-text" : "lose-text"; 
         if (amIWinner) { playerRankDisplay.innerText = data.newWinnerRank; myUserObj.rank = data.newWinnerRank; } else { playerRankDisplay.innerText = data.newLoserRank; myUserObj.rank = data.newLoserRank; }
-        document.getElementById('go-winner-pfp').src = data.winnerData.pfp; document.getElementById('go-winner-name').innerText = data.winnerData.username; document.getElementById('go-winner-rank').innerText = `${data.newWinnerRank}⭐`;
-        document.getElementById('go-loser-pfp').src = data.loserData.pfp; document.getElementById('go-loser-name').innerText = data.loserData.username; document.getElementById('go-loser-rank').innerText = `${data.newLoserRank}⭐`;
+        
+        // GameOver PFP Cosmetics
+        const wBorder = COLOR_MAP[data.winnerData.equipped?.border?.replace('border_', '')] || 'var(--secondary)';
+        const lBorder = COLOR_MAP[data.loserData.equipped?.border?.replace('border_', '')] || 'var(--primary)';
+        
+        document.getElementById('go-winner-pfp').src = data.winnerData.pfp; document.getElementById('go-winner-pfp').style.borderColor = wBorder; document.getElementById('go-winner-name').innerText = data.winnerData.username; document.getElementById('go-winner-rank').innerText = `${data.newWinnerRank}⭐`;
+        document.getElementById('go-loser-pfp').src = data.loserData.pfp; document.getElementById('go-loser-pfp').style.borderColor = lBorder; document.getElementById('go-loser-name').innerText = data.loserData.username; document.getElementById('go-loser-rank').innerText = `${data.newLoserRank}⭐`;
     } modal.style.display = 'flex'; 
 });
 
@@ -343,16 +394,12 @@ document.getElementById('returnToResultsBtn').addEventListener('click', () => { 
 function resetBoardUI() {
     stttBoard.innerHTML = ''; for (let i = 0; i < 9; i++) { const macroCell = document.createElement('div'); macroCell.className = 'macro-cell'; macroCell.id = `macro-${i}`; for (let j = 0; j < 9; j++) { const microCell = document.createElement('div'); microCell.className = 'micro-cell'; microCell.id = `micro-${i}-${j}`; microCell.onclick = () => { if (currentGameType === 'Super Tic-Tac-Toe') socket.emit('makeMove', { roomName: currentRoom, macroIndex: i, microIndex: j }); }; macroCell.appendChild(microCell); } stttBoard.appendChild(macroCell); }
     tttBoard.innerHTML = ''; for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const cell = document.createElement('div'); cell.className = 'ttt-cell'; cell.id = `ttt-${r}-${c}`; cell.onclick = () => { if (currentGameType === 'Endless Tic-Tac-Toe') socket.emit('makeTTTEndlessMove', { roomName: currentRoom, r, c }); }; tttBoard.appendChild(cell); } }
-    for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { document.getElementById(`c4-${r}-${c}`).className = 'c4-cell'; } }
-    for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const h = document.getElementById(`h-${r}-${c}`); if(h) h.className = 'dab-hline'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const v = document.getElementById(`v-${r}-${c}`); if(v) v.className = 'dab-vline'; } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const b = document.getElementById(`box-${r}-${c}`); if(b) { b.className = 'dab-box'; b.innerText = ''; } } } document.getElementById('dab-score-red').innerText = '0'; document.getElementById('dab-score-blue').innerText = '0';
+    for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = document.getElementById(`c4-${r}-${c}`); cell.className = 'c4-cell'; cell.removeAttribute('data-filled'); cell.removeAttribute('style'); } }
+    for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const h = document.getElementById(`h-${r}-${c}`); if(h) { h.className = 'dab-hline'; h.removeAttribute('style'); } } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const v = document.getElementById(`v-${r}-${c}`); if(v) { v.className = 'dab-vline'; v.removeAttribute('style'); } } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const b = document.getElementById(`box-${r}-${c}`); if(b) { b.className = 'dab-box'; b.innerText = ''; b.removeAttribute('style'); } } } document.getElementById('dab-score-red').innerText = '0'; document.getElementById('dab-score-blue').innerText = '0';
     for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const m = document.getElementById(`bs-my-${r}-${c}`); if(m) { m.className = 'bs-cell'; m.innerText = ''; } const t = document.getElementById(`bs-target-${r}-${c}`); if(t) { t.className = 'bs-cell'; t.innerText = ''; } } }
-    
-    // NEW: Mini Chess clear logic
     for (let r = 0; r < 4; r++) { for (let c = 0; c < 8; c++) { const cell = document.getElementById(`mc-${r}-${c}`); if(cell) { cell.innerHTML = ''; cell.classList.remove('mc-selected'); } } }
-    
     c8MyHand.innerHTML = ''; c8OppHand.innerHTML = ''; c8Discard.innerHTML = ''; c8ActiveSuit.innerText = ''; document.getElementById('c8-suit-modal').style.display = 'none'; lastTopCardStr = ""; 
     rmMyHand.innerHTML = ''; rmOppHand.innerHTML = ''; rmDiscardPile.innerHTML = ''; rmMeldArea.innerHTML = ''; rummySelectedIndices = []; rummySelectedMeldId = null;
-
     document.getElementById('game-over-modal').classList.remove('peek-mode'); document.getElementById('returnToResultsBtn').style.display = 'none'; document.getElementById('roulette-screen').style.display = 'none';
 }
 
