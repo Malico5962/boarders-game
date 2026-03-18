@@ -1,5 +1,6 @@
-// public/app.js
 const socket = window.socket = io();
+
+if (window.initBuckPoolSocket) window.initBuckPoolSocket(socket);
 
 const animStyles = document.createElement('style');
 animStyles.innerHTML = `
@@ -17,7 +18,6 @@ const playerNameDisplay = document.getElementById('playerNameDisplay'); const pl
 const findMatchBtn = document.getElementById('findMatchBtn'); const statusDiv = document.getElementById('status'); 
 const roleDisplay = document.getElementById('player-role-display'); const turnDisplay = document.getElementById('turn-display');
 
-// Safely restore local const DOM vars
 const stttContainer = document.getElementById('sttt-container'); const stttBoard = document.getElementById('sttt-board');
 const tttContainer = document.getElementById('ttt-container'); const tttBoard = document.getElementById('ttt-board');
 const c4Container = document.getElementById('c4-container'); const c4Board = document.getElementById('c4-board');
@@ -30,36 +30,33 @@ const rmContainer = document.getElementById('rm-container'); const rmOppHand = d
 window.COLOR_MAP = { red: '#ff003c', orange: '#ff8800', yellow: '#ffcc00', green: '#00e640', blue: '#0088ff', purple: '#b000ff', none: null };
 window.p1Color = 'var(--primary)'; window.p2Color = 'var(--secondary)';
 window.p1CardBack = ''; window.p2CardBack = ''; window.myCardBack = ''; window.oppCardBack = '';
-
-function getChessPlayerClient(piece) { if (piece >= 11 && piece <= 15) return 'Player 1'; if (piece >= 21 && piece <= 25) return 'Player 2'; return null; }
-function checkLineOfSightClient(board, fromR, fromC, toR, toC) { let rStep = toR === fromR ? 0 : (toR - fromR) / Math.abs(toR - fromR); let cStep = toC === fromC ? 0 : (toC - fromC) / Math.abs(toC - fromC); let r = fromR + rStep; let c = fromC + cStep; while (r !== toR || c !== toC) { if (board[r][c] !== 0) return false; r += rStep; c += cStep; } return true; }
-function isValidChessMoveClient(board, player, fromR, fromC, toR, toC) { if (fromR === toR && fromC === toC) return false; let piece = board[fromR][fromC]; let target = board[toR][toC]; if (target !== 0 && getChessPlayerClient(target) === player) return false; let dr = toR - fromR; let dc = toC - fromC; let adr = Math.abs(dr); let adc = Math.abs(dc); let type = piece % 10; if (type === 1) return adr <= 1 && adc <= 1; if (type === 2) return (adr === adc || adr === 0 || adc === 0) && checkLineOfSightClient(board, fromR, fromC, toR, toC); if (type === 3) return (adr === adc) && checkLineOfSightClient(board, fromR, fromC, toR, toC); if (type === 4) return (adr === 0 || adc === 0) && checkLineOfSightClient(board, fromR, fromC, toR, toC); if (type === 5) { let dir = player === 'Player 1' ? 1 : -1; if (dc === dir && adr === 0 && target === 0) return true; if (dc === dir && adr === 1 && target !== 0) return true; return false; } return false; }
-
 window.currentRoom = null; window.mySymbol = null; window.currentGameType = null; window.myUsername = null; window.myUserObj = null; 
-let myPrivateCode = null; let isLobbyHost = false; window.isPrivateGame = false;
+window.isPrivateGame = false;
+
+let myPrivateCode = null; let isLobbyHost = false; 
 let mcSelected = null; let lastChessGame = null;
 const chessIcons = { 1: '♚\uFE0E', 2: '♛\uFE0E', 3: '♝\uFE0E', 4: '♜\uFE0E', 5: '♟\uFE0E' };
 let localBattleshipBoard = Array(10).fill(null).map(() => Array(10).fill(0));
 let pendingC8CardIndex = null; let lastTopCardStr = ""; 
 let rummySelectedIndices = []; let rummySelectedMeldId = null;
 
-window.localTimerInterval = null;
-window.localTimeLeft = 60;
+window.localTimerInterval = null; window.localTimeLeft = 60;
+
+function getChessPlayerClient(piece) { if (piece >= 11 && piece <= 15) return 'Player 1'; if (piece >= 21 && piece <= 25) return 'Player 2'; return null; }
+function checkLineOfSightClient(board, fromR, fromC, toR, toC) { let rStep = toR === fromR ? 0 : (toR - fromR) / Math.abs(toR - fromR); let cStep = toC === fromC ? 0 : (toC - fromC) / Math.abs(toC - fromC); let r = fromR + rStep; let c = fromC + cStep; while (r !== toR || c !== toC) { if (board[r][c] !== 0) return false; r += rStep; c += cStep; } return true; }
+function isValidChessMoveClient(board, player, fromR, fromC, toR, toC) { if (fromR === toR && fromC === toC) return false; let piece = board[fromR][fromC]; let target = board[toR][toC]; if (target !== 0 && getChessPlayerClient(target) === player) return false; let dr = toR - fromR; let dc = toC - fromC; let adr = Math.abs(dr); let adc = Math.abs(dc); let type = piece % 10; if (type === 1) return adr <= 1 && adc <= 1; if (type === 2) return (adr === adc || adr === 0 || adc === 0) && checkLineOfSightClient(board, fromR, fromC, toR, toC); if (type === 3) return (adr === adc) && checkLineOfSightClient(board, fromR, fromC, toR, toC); if (type === 4) return (adr === 0 || adc === 0) && checkLineOfSightClient(board, fromR, fromC, toR, toC); if (type === 5) { let dir = player === 'Player 1' ? 1 : -1; if (dc === dir && adr === 0 && target === 0) return true; if (dc === dir && adr === 1 && target !== 0) return true; return false; } return false; }
 
 window.resetTurnTimer = function() {
     if (window.localTimerInterval) clearInterval(window.localTimerInterval);
     window.localTimeLeft = 60;
-    
     let timerEl = document.getElementById('turn-timer-display');
     if (!timerEl) {
         timerEl = document.createElement('div'); timerEl.id = 'turn-timer-display';
         timerEl.style.fontSize = '1.4rem'; timerEl.style.fontWeight = '900'; timerEl.style.marginTop = '10px';
         turnDisplay.parentNode.insertBefore(timerEl, turnDisplay.nextSibling);
     }
-    
     timerEl.style.display = 'block'; timerEl.style.color = 'var(--text)'; timerEl.classList.remove('sttt-win-pulse');
     timerEl.innerText = `⏱️ ${window.localTimeLeft}s`;
-
     window.localTimerInterval = setInterval(() => {
         window.localTimeLeft--;
         if (window.localTimeLeft <= 0) { window.localTimeLeft = 0; clearInterval(window.localTimerInterval); }
@@ -81,30 +78,83 @@ async function handleAuth(action) {
     const username = usernameInput.value, password = passwordInput.value; if (!username || !password) return authError.innerText = "Enter username and password.";
     const res = await fetch(`/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
     const data = await res.json();
-    if (res.ok) { myUserObj = data.user; localStorage.setItem('boarders_account', JSON.stringify({ username, password })); myUsername = myUserObj.username; authSection.style.display = 'none'; gameSection.style.display = 'block'; updateDashboardUI(); } else { localStorage.removeItem('boarders_account'); authError.innerText = data.error; }
+    if (res.ok) { window.myUserObj = data.user; localStorage.setItem('boarders_account', JSON.stringify({ username, password })); window.myUsername = window.myUserObj.username; authSection.style.display = 'none'; gameSection.style.display = 'block'; window.updateDashboardUI(); } else { localStorage.removeItem('boarders_account'); authError.innerText = data.error; }
 }
 
 window.updateDashboardUI = function() {
-    playerNameDisplay.innerText = myUserObj.username; playerRankDisplay.innerText = myUserObj.rank;
-    document.getElementById('playerBucksDisplay').innerText = myUserObj.bucks || 0; 
-    
+    playerNameDisplay.innerText = window.myUserObj.username; playerRankDisplay.innerText = window.myUserObj.rank;
+    document.getElementById('playerBucksDisplay').innerText = window.myUserObj.bucks || 0; 
     const dashPfp = document.getElementById('dashPfpDisplay');
-    dashPfp.src = myUserObj.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${myUserObj.username}`;
-    
-    const borderEq = myUserObj.equipped?.border?.replace('border_', '') || 'none';
-    const bannerEq = myUserObj.equipped?.banner?.replace('banner_', '') || 'none';
-    
+    dashPfp.src = window.myUserObj.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${window.myUserObj.username}`;
+    const borderEq = window.myUserObj.equipped?.border?.replace('border_', '') || 'none';
+    const bannerEq = window.myUserObj.equipped?.banner?.replace('banner_', '') || 'none';
     dashPfp.style.borderColor = window.COLOR_MAP[borderEq] || 'white';
     document.querySelector('.dash-profile-top').style.background = window.COLOR_MAP[bannerEq] ? `${window.COLOR_MAP[bannerEq]}80` : 'rgba(255,255,255,0.5)'; 
-
-    document.getElementById('playerDescDisplay').innerText = `"${myUserObj.description}"`;
+    document.getElementById('playerDescDisplay').innerText = `"${window.myUserObj.description}"`;
 }
 
+// UI Buttons
 document.getElementById('registerBtn').addEventListener('click', () => handleAuth('register')); document.getElementById('loginBtn').addEventListener('click', () => handleAuth('login')); document.getElementById('logoutBtn').addEventListener('click', () => { localStorage.removeItem('boarders_account'); location.reload(); });
-document.getElementById('openAccountBtn').addEventListener('click', () => { document.getElementById('setUsername').value = myUserObj.username; document.getElementById('setPassword').value = ''; document.getElementById('setProfilePic').value = myUserObj.profilePic.includes('api.dicebear.com') ? '' : myUserObj.profilePic; document.getElementById('setDesc').value = myUserObj.description; document.getElementById('setAnon').checked = myUserObj.isAnonymous; document.getElementById('settingsPfpPreview').src = myUserObj.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${myUserObj.username}`; document.getElementById('account-modal').style.display = 'flex'; });
-document.getElementById('setProfilePic').addEventListener('input', (e) => { document.getElementById('settingsPfpPreview').src = e.target.value || `https://api.dicebear.com/7.x/bottts/svg?seed=${myUserObj.username}`; });
+
+document.getElementById('openAccountBtn').addEventListener('click', () => { document.getElementById('setUsername').value = window.myUserObj.username; document.getElementById('setPassword').value = ''; document.getElementById('setProfilePic').value = window.myUserObj.profilePic.includes('api.dicebear.com') ? '' : window.myUserObj.profilePic; document.getElementById('setDesc').value = window.myUserObj.description; document.getElementById('setAnon').checked = window.myUserObj.isAnonymous; document.getElementById('settingsPfpPreview').src = window.myUserObj.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${window.myUserObj.username}`; document.getElementById('account-modal').style.display = 'flex'; });
+document.getElementById('setProfilePic').addEventListener('input', (e) => { document.getElementById('settingsPfpPreview').src = e.target.value || `https://api.dicebear.com/7.x/bottts/svg?seed=${window.myUserObj.username}`; });
 document.getElementById('closeAccountBtn').addEventListener('click', () => document.getElementById('account-modal').style.display = 'none');
-document.getElementById('saveAccountBtn').addEventListener('click', async () => { const newUsername = document.getElementById('setUsername').value; const newPassword = document.getElementById('setPassword').value; let profilePic = document.getElementById('setProfilePic').value; if (!profilePic.trim()) profilePic = `https://api.dicebear.com/7.x/bottts/svg?seed=${newUsername || myUserObj.username}`; const res = await fetch('/update-profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentUsername: myUserObj.username, newUsername: newUsername || undefined, newPassword: newPassword || undefined, profilePic, description: document.getElementById('setDesc').value, isAnonymous: document.getElementById('setAnon').checked }) }); const data = await res.json(); if (res.ok) { myUserObj = data.user; myUsername = myUserObj.username; localStorage.setItem('boarders_account', JSON.stringify({ username: myUserObj.username, password: newPassword || JSON.parse(localStorage.getItem('boarders_account')).password })); updateDashboardUI(); document.getElementById('account-modal').style.display = 'none'; } else { document.getElementById('account-error').innerText = data.error; } });
+document.getElementById('saveAccountBtn').addEventListener('click', async () => { const newUsername = document.getElementById('setUsername').value; const newPassword = document.getElementById('setPassword').value; let profilePic = document.getElementById('setProfilePic').value; if (!profilePic.trim()) profilePic = `https://api.dicebear.com/7.x/bottts/svg?seed=${newUsername || window.myUserObj.username}`; const res = await fetch('/update-profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentUsername: window.myUserObj.username, newUsername: newUsername || undefined, newPassword: newPassword || undefined, profilePic, description: document.getElementById('setDesc').value, isAnonymous: document.getElementById('setAnon').checked }) }); const data = await res.json(); if (res.ok) { window.myUserObj = data.user; window.myUsername = window.myUserObj.username; localStorage.setItem('boarders_account', JSON.stringify({ username: window.myUserObj.username, password: newPassword || JSON.parse(localStorage.getItem('boarders_account')).password })); window.updateDashboardUI(); document.getElementById('account-modal').style.display = 'none'; } else { document.getElementById('account-error').innerText = data.error; } });
+
+// NEW: FEEDBACK LOGIC
+let currentFeedbackType = '';
+document.getElementById('openFeedbackBtn').addEventListener('click', () => {
+    document.getElementById('feedback-step-1').style.display = 'block';
+    document.getElementById('feedback-step-2').style.display = 'none';
+    document.getElementById('feedback-text').value = '';
+    document.getElementById('feedback-modal').style.display = 'flex';
+});
+
+document.getElementById('closeFeedbackBtn').addEventListener('click', () => {
+    document.getElementById('feedback-modal').style.display = 'none';
+});
+
+document.getElementById('btn-bug-report').addEventListener('click', () => {
+    currentFeedbackType = 'Bug Report';
+    document.getElementById('feedback-type-title').innerText = '🐛 Report a Bug';
+    document.getElementById('feedback-step-1').style.display = 'none';
+    document.getElementById('feedback-step-2').style.display = 'block';
+});
+
+document.getElementById('btn-suggestion').addEventListener('click', () => {
+    currentFeedbackType = 'Suggestion';
+    document.getElementById('feedback-type-title').innerText = '💡 Make a Suggestion';
+    document.getElementById('feedback-step-1').style.display = 'none';
+    document.getElementById('feedback-step-2').style.display = 'block';
+});
+
+document.getElementById('submitFeedbackBtn').addEventListener('click', async () => {
+    const msg = document.getElementById('feedback-text').value;
+    if (!msg.trim()) return alert('Please enter a message.');
+    
+    const btn = document.getElementById('submitFeedbackBtn');
+    btn.innerText = 'Sending...'; btn.disabled = true;
+
+    try {
+        const res = await fetch('/send-feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: window.myUsername, type: currentFeedbackType, message: msg })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            alert(data.message);
+            document.getElementById('feedback-modal').style.display = 'none';
+        } else {
+            alert(data.error);
+        }
+    } catch (err) {
+        alert('Failed to send feedback.');
+    }
+    
+    btn.innerText = 'Send Feedback'; btn.disabled = false;
+});
+
 document.getElementById('viewLeaderboardBtn').addEventListener('click', async () => { document.getElementById('leaderboard-modal').style.display = 'flex'; const res = await fetch('/leaderboard'); const data = await res.json(); document.getElementById('leaderboard-content').innerHTML = data.map((u, i) => `<div class="leaderboard-item"><div class="lb-left"><span style="font-weight: 900; margin-right: 15px; color: var(--secondary);">#${i+1}</span><img src="${u.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username}`}"><span>${u.username}</span></div><div><span style="color:var(--primary); margin-right: 10px;">${u.rank} ⭐</span><span style="color:#2ed573;">${u.bucks || 0} 💵</span></div></div>`).join(''); }); 
 document.getElementById('closeLeaderboardBtn').addEventListener('click', () => { document.getElementById('leaderboard-modal').style.display = 'none'; });
 document.getElementById('viewStatsBtn').addEventListener('click', () => { if (window.renderStatsUI) window.renderStatsUI(); document.getElementById('stats-modal').style.display = 'flex'; });
@@ -116,7 +166,7 @@ document.getElementById('closeShopBtn').addEventListener('click', () => { docume
 document.getElementById('openLockerBtn').addEventListener('click', () => { if (window.renderLocker) window.renderLocker(); document.getElementById('locker-modal').style.display = 'flex'; });
 document.getElementById('closeLockerBtn').addEventListener('click', () => { document.getElementById('locker-modal').style.display = 'none'; });
 
-findMatchBtn.addEventListener('click', () => { socket.emit('joinQueue', myUsername); statusDiv.innerText = 'Searching for a match... ⏳'; findMatchBtn.disabled = true; }); 
+findMatchBtn.addEventListener('click', () => { socket.emit('joinQueue', window.myUsername); statusDiv.innerText = 'Searching for a match... ⏳'; findMatchBtn.disabled = true; }); 
 document.getElementById('quitBtn').addEventListener('click', () => { socket.emit('quitGame'); });
 
 socket.on('queueError', (msg) => { alert(msg); statusDiv.innerText = 'Ready to play?'; findMatchBtn.disabled = false; });
@@ -132,20 +182,18 @@ socket.on('matchFound', (data) => {
     setTimeout(() => { rStrip.style.transition = 'transform 3.5s cubic-bezier(0.15, 0.85, 0.3, 1)'; rStrip.style.transform = `translateY(-${30 * 120}px)`; }, 50);
 });
 
-// Private Games
 document.getElementById('privateGameMenuBtn').addEventListener('click', () => document.getElementById('private-menu-modal').style.display = 'flex'); document.getElementById('closePrivateMenuBtn').addEventListener('click', () => document.getElementById('private-menu-modal').style.display = 'none'); document.getElementById('hostBtn').addEventListener('click', () => { document.getElementById('private-menu-modal').style.display = 'none'; document.getElementById('host-modal').style.display = 'flex'; }); document.getElementById('cancelHostBtn').addEventListener('click', () => document.getElementById('host-modal').style.display = 'none'); document.getElementById('joinBtn').addEventListener('click', () => { document.getElementById('private-menu-modal').style.display = 'none'; document.getElementById('join-modal').style.display = 'flex'; }); document.getElementById('cancelJoinBtn').addEventListener('click', () => document.getElementById('join-modal').style.display = 'none');
-document.getElementById('confirmHostBtn').addEventListener('click', () => { const code = document.getElementById('hostCodeInput').value; if (code.length !== 4) return document.getElementById('host-error').innerText = "Code must be 4 characters."; document.getElementById('host-error').innerText = ""; socket.emit('createPrivateRoom', { username: myUsername, code }); }); document.getElementById('confirmJoinBtn').addEventListener('click', () => { const code = document.getElementById('joinCodeInput').value; if (code.length !== 4) return document.getElementById('join-error').innerText = "Code must be 4 characters."; document.getElementById('join-error').innerText = ""; socket.emit('joinPrivateRoom', { username: myUsername, code }); });
+document.getElementById('confirmHostBtn').addEventListener('click', () => { const code = document.getElementById('hostCodeInput').value; if (code.length !== 4) return document.getElementById('host-error').innerText = "Code must be 4 characters."; document.getElementById('host-error').innerText = ""; socket.emit('createPrivateRoom', { username: window.myUsername, code }); }); document.getElementById('confirmJoinBtn').addEventListener('click', () => { const code = document.getElementById('joinCodeInput').value; if (code.length !== 4) return document.getElementById('join-error').innerText = "Code must be 4 characters."; document.getElementById('join-error').innerText = ""; socket.emit('joinPrivateRoom', { username: window.myUsername, code }); });
 socket.on('privateError', (msg) => { alert(msg); location.reload(); }); 
 socket.on('privateRoomJoined', (data) => { document.getElementById('host-modal').style.display = 'none'; document.getElementById('join-modal').style.display = 'none'; document.getElementById('private-lobby-modal').style.display = 'flex'; myPrivateCode = data.code; isLobbyHost = data.isHost; document.getElementById('lobbyCodeDisplay').innerText = data.code; document.getElementById('lobbyPlayersDisplay').innerText = data.players.join(' & '); document.getElementById('chat-box').innerHTML = '<div class="chat-msg"><i>Welcome to the private lobby!</i></div>'; if (isLobbyHost) document.getElementById('hostControls').style.display = 'block'; });
 socket.on('updateLobbyPlayers', (players) => { document.getElementById('lobbyPlayersDisplay').innerText = players.join(' & '); if (players.length === 2 && isLobbyHost) { const startBtn = document.getElementById('startPrivateBtn'); startBtn.disabled = false; startBtn.innerText = "Start Game! 🚀"; } });
-document.getElementById('sendChatBtn').addEventListener('click', () => { const text = document.getElementById('chatInput').value; if (text && myPrivateCode) { socket.emit('sendPrivateChat', { code: myPrivateCode, message: text, username: myUsername }); document.getElementById('chatInput').value = ''; } }); socket.on('updatePrivateChat', (msg) => { const chatBox = document.getElementById('chat-box'); chatBox.innerHTML += `<div class="chat-msg"><span>${msg.username}:</span> ${msg.text}</div>`; chatBox.scrollTop = chatBox.scrollHeight; });
+document.getElementById('sendChatBtn').addEventListener('click', () => { const text = document.getElementById('chatInput').value; if (text && myPrivateCode) { socket.emit('sendPrivateChat', { code: myPrivateCode, message: text, username: window.myUsername }); document.getElementById('chatInput').value = ''; } }); socket.on('updatePrivateChat', (msg) => { const chatBox = document.getElementById('chat-box'); chatBox.innerHTML += `<div class="chat-msg"><span>${msg.username}:</span> ${msg.text}</div>`; chatBox.scrollTop = chatBox.scrollHeight; });
 document.getElementById('startPrivateBtn').addEventListener('click', () => { socket.emit('startPrivateGame', { code: myPrivateCode, gameSelection: document.getElementById('gameSelector').value }); }); document.getElementById('leaveLobbyBtn').addEventListener('click', () => location.reload());
 
 socket.on('receiveEmoji', ({ senderId, emoji }) => {
     const isP1 = senderId === window.p1Id;
     const targetPfp = document.getElementById(isP1 ? 'p1-info' : 'p2-info');
     if(!targetPfp) return;
-    
     const em = document.createElement('div');
     em.innerText = emoji;
     em.style.cssText = 'position:absolute; font-size:3.5rem; top:-20px; z-index:100; pointer-events:none; animation: floatEmoji 2s ease-out forwards; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.3));';
@@ -155,7 +203,7 @@ socket.on('receiveEmoji', ({ senderId, emoji }) => {
     setTimeout(() => em.remove(), 2000);
 });
 
-// Create DOM elements locally to prevent variable contamination
+// Setup Grid Boards
 for (let i = 0; i < 9; i++) { const macroCell = document.createElement('div'); macroCell.className = 'macro-cell'; macroCell.id = `macro-${i}`; for (let j = 0; j < 9; j++) { const microCell = document.createElement('div'); microCell.className = 'micro-cell'; microCell.id = `micro-${i}-${j}`; microCell.onclick = () => { if (window.currentGameType === 'Super Tic-Tac-Toe') socket.emit('makeMove', { roomName: window.currentRoom, macroIndex: i, microIndex: j }); }; macroCell.appendChild(microCell); } stttBoard.appendChild(macroCell); }
 for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const cell = document.createElement('div'); cell.className = 'ttt-cell'; cell.id = `ttt-${r}-${c}`; cell.onclick = () => { if (window.currentGameType === 'Endless Tic-Tac-Toe') socket.emit('makeTTTEndlessMove', { roomName: window.currentRoom, r, c }); }; tttBoard.appendChild(cell); } }
 for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = document.createElement('div'); cell.className = 'c4-cell'; cell.id = `c4-${r}-${c}`; cell.onclick = () => { if (window.currentGameType === 'Connect 4') socket.emit('makeC4Move', { roomName: window.currentRoom, col: c }); }; c4Board.appendChild(cell); } }
@@ -165,22 +213,16 @@ for (let r = 0; r < 4; r++) { for (let c = 0; c < 8; c++) { const cell = documen
 
 socket.on('startGame', (gameState) => {
     window.currentRoom = gameState.roomName; window.currentGameType = gameState.gameType; window.mySymbol = gameState.players[socket.id]; window.isPrivateGame = gameState.isPrivate; 
-    
-    window.p1Id = Object.keys(gameState.players)[0];
-    window.p2Id = Object.keys(gameState.players)[1];
+    window.p1Id = Object.keys(gameState.players)[0]; window.p2Id = Object.keys(gameState.players)[1];
 
     const p1Data = gameState.playerData[window.p1Id]; const p2Data = gameState.playerData[window.p2Id];
     
     // SMART PIECE COLLISION RESOLVER
-    const p1Eq = p1Data.equipped || {};
-    const p2Eq = p2Data.equipped || {};
-
-    let p1Piece = p1Eq.piece?.primary || 'piece_red';
-    let p2Piece = p2Eq.piece?.primary || 'piece_red';
+    const p1Eq = p1Data.equipped || {}; const p2Eq = p2Data.equipped || {};
+    let p1Piece = p1Eq.piece?.primary || 'piece_red'; let p2Piece = p2Eq.piece?.primary || 'piece_red';
 
     if (p1Piece === p2Piece) {
-        if (Math.random() > 0.5) { p1Piece = p1Eq.piece?.secondary || 'piece_blue'; } 
-        else { p2Piece = p2Eq.piece?.secondary || 'piece_blue'; }
+        if (Math.random() > 0.5) { p1Piece = p1Eq.piece?.secondary || 'piece_blue'; } else { p2Piece = p2Eq.piece?.secondary || 'piece_blue'; }
         if (p1Piece === p2Piece) { p1Piece = 'piece_red'; p2Piece = 'piece_blue'; }
     }
 
@@ -188,13 +230,10 @@ socket.on('startGame', (gameState) => {
     window.p2Color = window.COLOR_MAP[p2Piece.replace('piece_', '')] || 'var(--secondary)';
     
     // EXTRACT CARD BACKS
-    let p1CbId = p1Eq.cardBack || 'cardBack_red';
-    let p2CbId = p2Eq.cardBack || 'cardBack_red';
-    
-    const rawP1Cb = window.COLOR_MAP[p1CbId.replace('cardBack_', '')];
-    const rawP2Cb = window.COLOR_MAP[p2CbId.replace('cardBack_', '')];
-    window.p1CardBack = rawP1Cb ? `repeating-linear-gradient(45deg, ${rawP1Cb}, ${rawP1Cb} 10px, rgba(0,0,0,0.2) 10px, rgba(0,0,0,0.2) 20px)` : '';
-    window.p2CardBack = rawP2Cb ? `repeating-linear-gradient(45deg, ${rawP2Cb}, ${rawP2Cb} 10px, rgba(0,0,0,0.2) 10px, rgba(0,0,0,0.2) 20px)` : '';
+    let p1CbId = p1Eq.cardBack || 'cardBack_red'; let p2CbId = p2Eq.cardBack || 'cardBack_red';
+    const rawP1Cb = window.COLOR_MAP[p1CbId.replace('cardBack_', '')]; const rawP2Cb = window.COLOR_MAP[p2CbId.replace('cardBack_', '')];
+    window.p1CardBack = rawP1Cb ? `repeating-linear-gradient(45deg, ${rawP1Cb}, ${rawP1Cb} 10px, #ffffff 10px, #ffffff 20px)` : '';
+    window.p2CardBack = rawP2Cb ? `repeating-linear-gradient(45deg, ${rawP2Cb}, ${rawP2Cb} 10px, #ffffff 10px, #ffffff 20px)` : '';
     
     window.myCardBack = (window.mySymbol === gameState.players[window.p1Id]) ? window.p1CardBack : window.p2CardBack;
     window.oppCardBack = (window.mySymbol === gameState.players[window.p1Id]) ? window.p2CardBack : window.p1CardBack;
@@ -206,6 +245,7 @@ socket.on('startGame', (gameState) => {
 
     document.getElementById('p1-pfp').style.borderColor = p1Border; document.getElementById('p2-pfp').style.borderColor = p2Border;
     document.getElementById('p1-info').style.background = p1Banner === '#f1f2f6' ? p1Banner : `${p1Banner}80`; document.getElementById('p2-info').style.background = p2Banner === '#f1f2f6' ? p2Banner : `${p2Banner}80`;
+
     document.getElementById('p1-name').innerText = p1Data.username; document.getElementById('p1-rank').innerText = `${p1Data.rank}⭐`; document.getElementById('p1-pfp').src = p1Data.pfp;
     document.getElementById('p2-name').innerText = p2Data.username; document.getElementById('p2-rank').innerText = `${p2Data.rank}⭐`; document.getElementById('p2-pfp').src = p2Data.pfp;
 
@@ -286,7 +326,7 @@ socket.on('gameOverScreen', (data) => {
     if (window.currentGameType && (amIWinner || amILoser || data.isTie)) { if (window.recordGameResult) window.recordGameResult(window.currentGameType, amIWinner, data.isTie); }
     window.currentGameType = null; const title = document.getElementById('go-title'); const msg = document.getElementById('go-message'); const points = document.getElementById('go-points'); const modal = document.getElementById('game-over-modal'); const playersContainer = document.getElementById('go-players-container'); 
     
-    if (amIWinner && data.newWinnerBucks !== undefined) { myUserObj.bucks = data.newWinnerBucks; window.updateDashboardUI(); }
+    if (amIWinner && data.newWinnerBucks !== undefined) { window.myUserObj.bucks = data.newWinnerBucks; window.updateDashboardUI(); }
 
     const rummyScoresDiv = document.getElementById('go-rummy-scores');
     if (data.rummyScores && !data.isQuit) { rummyScoresDiv.style.display = 'block'; rummyScoresDiv.innerHTML = `Final Match Scores:<br>Player 1: ${data.rummyScores['Player 1']} pts | Player 2: ${data.rummyScores['Player 2']} pts`; } else { rummyScoresDiv.style.display = 'none'; }
@@ -298,15 +338,13 @@ socket.on('gameOverScreen', (data) => {
         if (data.isQuit) {
             if (data.isAfk) { msg.innerText = amIWinner ? "Your opponent went AFK!" : "You ran out of time!"; }
             else { msg.innerText = amIWinner ? "Your opponent fled!" : "You quit the game!"; }
-        } else {
-            msg.innerText = amIWinner ? "You crushed them!" : "Better luck next time.";
-        }
+        } else { msg.innerText = amIWinner ? "You crushed them!" : "Better luck next time."; }
         
         const poolWinningsStr = data.poolWinnings ? `\n+${data.poolWinnings} Wager Pool 🤑` : '';
         points.innerText = amIWinner ? `+${data.pointsWon} Points\n+5 Bucks 💵${poolWinningsStr}` : `-${data.pointsLost} Points`; 
         points.className = amIWinner ? "win-text" : "lose-text"; 
         
-        if (amIWinner) { playerRankDisplay.innerText = data.newWinnerRank; myUserObj.rank = data.newWinnerRank; } else { playerRankDisplay.innerText = data.newLoserRank; myUserObj.rank = data.newLoserRank; }
+        if (amIWinner) { playerRankDisplay.innerText = data.newWinnerRank; window.myUserObj.rank = data.newWinnerRank; } else { playerRankDisplay.innerText = data.newLoserRank; window.myUserObj.rank = data.newLoserRank; }
         
         const wBorder = window.COLOR_MAP[data.winnerData.equipped?.border?.replace('border_', '')] || 'var(--secondary)';
         const lBorder = window.COLOR_MAP[data.loserData.equipped?.border?.replace('border_', '')] || 'var(--primary)';
@@ -326,10 +364,10 @@ window.resetBoardUI = function() {
     window.stopTurnTimer();
     stttBoard.innerHTML = ''; for (let i = 0; i < 9; i++) { const macroCell = document.createElement('div'); macroCell.className = 'macro-cell'; macroCell.id = `macro-${i}`; for (let j = 0; j < 9; j++) { const microCell = document.createElement('div'); microCell.className = 'micro-cell'; microCell.id = `micro-${i}-${j}`; microCell.onclick = () => { if (window.currentGameType === 'Super Tic-Tac-Toe') socket.emit('makeMove', { roomName: window.currentRoom, macroIndex: i, microIndex: j }); }; macroCell.appendChild(microCell); } stttBoard.appendChild(macroCell); }
     tttBoard.innerHTML = ''; for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const cell = document.createElement('div'); cell.className = 'ttt-cell'; cell.id = `ttt-${r}-${c}`; cell.onclick = () => { if (window.currentGameType === 'Endless Tic-Tac-Toe') socket.emit('makeTTTEndlessMove', { roomName: window.currentRoom, r, c }); }; tttBoard.appendChild(cell); } }
-    for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = document.getElementById(`c4-${r}-${c}`); cell.className = 'c4-cell'; cell.removeAttribute('data-filled'); cell.removeAttribute('style'); } }
+    for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = document.createElement('div'); cell.className = 'c4-cell'; cell.id = `c4-${r}-${c}`; cell.onclick = () => { if (window.currentGameType === 'Connect 4') socket.emit('makeC4Move', { roomName: window.currentRoom, col: c }); }; c4Board.appendChild(cell); } }
     for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const h = document.getElementById(`h-${r}-${c}`); if(h) { h.className = 'dab-hline'; h.removeAttribute('style'); } } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const v = document.getElementById(`v-${r}-${c}`); if(v) { v.className = 'dab-vline'; v.removeAttribute('style'); } } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const b = document.getElementById(`box-${r}-${c}`); if(b) { b.className = 'dab-box'; b.innerText = ''; b.removeAttribute('style'); } } } document.getElementById('dab-score-red').innerText = '0'; document.getElementById('dab-score-blue').innerText = '0';
     for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const m = document.getElementById(`bs-my-${r}-${c}`); if(m) { m.className = 'bs-cell'; m.innerText = ''; } const t = document.getElementById(`bs-target-${r}-${c}`); if(t) { t.className = 'bs-cell'; t.innerText = ''; } } }
-    for (let r = 0; r < 4; r++) { for (let c = 0; c < 8; c++) { const cell = document.getElementById(`mc-${r}-${c}`); if(cell) { cell.innerHTML = ''; cell.classList.remove('mc-selected'); } } }
+    for (let r = 0; r < 4; r++) { for (let c = 0; c < 8; c++) { const cell = document.createElement('div'); cell.id = `mc-${r}-${c}`; cell.className = `mc-cell ${(r + c) % 2 === 0 ? 'mc-light' : 'mc-dark'}`; cell.onclick = () => { if (window.currentGameType !== 'Mini Chess' || !lastChessGame || lastChessGame.turn !== window.mySymbol) return; const piece = lastChessGame.board[r][c]; const isMyPiece = (window.mySymbol === 'Player 1' && piece >= 11 && piece <= 15) || (window.mySymbol === 'Player 2' && piece >= 21 && piece <= 25); if (mcSelected) { if (isMyPiece) { mcSelected = {r, c}; updateChessUI(lastChessGame); } else { if (isValidChessMoveClient(lastChessGame.board, window.mySymbol, mcSelected.r, mcSelected.c, r, c)) { socket.emit('makeChessMove', { roomName: window.currentRoom, fromR: mcSelected.r, fromC: mcSelected.c, toR: r, toC: c }); } mcSelected = null; updateChessUI(lastChessGame); } } else { if (isMyPiece) { mcSelected = {r, c}; updateChessUI(lastChessGame); } } }; mcBoard.appendChild(cell); } }
     c8MyHand.innerHTML = ''; c8OppHand.innerHTML = ''; c8Discard.innerHTML = ''; c8ActiveSuit.innerText = ''; document.getElementById('c8-suit-modal').style.display = 'none'; lastTopCardStr = ""; 
     rmMyHand.innerHTML = ''; rmOppHand.innerHTML = ''; rmDiscardPile.innerHTML = ''; rmMeldArea.innerHTML = ''; rummySelectedIndices = []; rummySelectedMeldId = null;
     
