@@ -33,6 +33,51 @@ let localBattleshipBoard = Array(10).fill(null).map(() => Array(10).fill(0));
 let pendingC8CardIndex = null; let lastTopCardStr = ""; 
 let rummySelectedIndices = []; let rummySelectedMeldId = null;
 
+// NEW: VISUAL AFK TIMER LOGIC
+let localTimerInterval = null;
+let localTimeLeft = 60;
+
+function resetTurnTimer() {
+    if (localTimerInterval) clearInterval(localTimerInterval);
+    localTimeLeft = 60;
+    
+    let timerEl = document.getElementById('turn-timer-display');
+    if (!timerEl) {
+        timerEl = document.createElement('div');
+        timerEl.id = 'turn-timer-display';
+        timerEl.style.fontSize = '1.4rem';
+        timerEl.style.fontWeight = '900';
+        timerEl.style.marginTop = '10px';
+        turnDisplay.parentNode.insertBefore(timerEl, turnDisplay.nextSibling);
+    }
+    
+    timerEl.style.display = 'block';
+    timerEl.style.color = 'var(--text)';
+    timerEl.classList.remove('sttt-win-pulse');
+    timerEl.innerText = `⏱️ ${localTimeLeft}s`;
+
+    localTimerInterval = setInterval(() => {
+        localTimeLeft--;
+        if (localTimeLeft <= 0) {
+            localTimeLeft = 0;
+            clearInterval(localTimerInterval);
+        }
+        timerEl.innerText = `⏱️ ${localTimeLeft}s`;
+        
+        if (localTimeLeft <= 10) {
+            timerEl.style.color = '#ff4757';
+            timerEl.classList.add('sttt-win-pulse');
+        }
+    }, 1000);
+}
+
+function stopTurnTimer() {
+    if (localTimerInterval) clearInterval(localTimerInterval);
+    const timerEl = document.getElementById('turn-timer-display');
+    if (timerEl) timerEl.style.display = 'none';
+}
+
+
 socket.on('onlineCount', (count) => { document.getElementById('online-counter').innerText = `🟢 Players Online: ${count}`; });
 window.onload = () => { const savedUser = localStorage.getItem('boarders_account'); if (savedUser) { const { username, password } = JSON.parse(savedUser); usernameInput.value = username; passwordInput.value = password; handleAuth('login'); } };
 
@@ -47,7 +92,6 @@ function updateDashboardUI() {
     playerNameDisplay.innerText = myUserObj.username; playerRankDisplay.innerText = myUserObj.rank;
     document.getElementById('playerBucksDisplay').innerText = myUserObj.bucks || 0; 
     
-    // Apply Dashboard Cosmetics
     const dashPfp = document.getElementById('dashPfpDisplay');
     dashPfp.src = myUserObj.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${myUserObj.username}`;
     
@@ -88,6 +132,13 @@ document.getElementById('closeLockerBtn').addEventListener('click', () => { docu
 findMatchBtn.addEventListener('click', () => { socket.emit('joinQueue', myUsername); statusDiv.innerText = 'Searching for a match... ⏳'; findMatchBtn.disabled = true; }); 
 document.getElementById('quitBtn').addEventListener('click', () => { socket.emit('quitGame'); });
 
+// ANTI-CHEAT QUEUE ERROR LISTENER
+socket.on('queueError', (msg) => { 
+    alert(msg); 
+    statusDiv.innerText = 'Ready to play?'; 
+    findMatchBtn.disabled = false; 
+});
+
 socket.on('matchFound', (data) => { 
     document.getElementById('private-lobby-modal').style.display = 'none'; statusDiv.innerText = `Match found! 🎯`; gameSection.classList.add('fade-out'); 
     const rScreen = document.getElementById('roulette-screen'); const rStrip = document.getElementById('roulette-strip');
@@ -107,14 +158,12 @@ socket.on('updateLobbyPlayers', (players) => { document.getElementById('lobbyPla
 document.getElementById('sendChatBtn').addEventListener('click', () => { const text = document.getElementById('chatInput').value; if (text && myPrivateCode) { socket.emit('sendPrivateChat', { code: myPrivateCode, message: text, username: myUsername }); document.getElementById('chatInput').value = ''; } }); socket.on('updatePrivateChat', (msg) => { const chatBox = document.getElementById('chat-box'); chatBox.innerHTML += `<div class="chat-msg"><span>${msg.username}:</span> ${msg.text}</div>`; chatBox.scrollTop = chatBox.scrollHeight; });
 document.getElementById('startPrivateBtn').addEventListener('click', () => { socket.emit('startPrivateGame', { code: myPrivateCode, gameSelection: document.getElementById('gameSelector').value }); }); document.getElementById('leaveLobbyBtn').addEventListener('click', () => location.reload());
 
-// Generate Grids
 for (let i = 0; i < 9; i++) { const macroCell = document.createElement('div'); macroCell.className = 'macro-cell'; macroCell.id = `macro-${i}`; for (let j = 0; j < 9; j++) { const microCell = document.createElement('div'); microCell.className = 'micro-cell'; microCell.id = `micro-${i}-${j}`; microCell.onclick = () => { if (currentGameType === 'Super Tic-Tac-Toe') socket.emit('makeMove', { roomName: currentRoom, macroIndex: i, microIndex: j }); }; macroCell.appendChild(microCell); } stttBoard.appendChild(macroCell); }
 for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const cell = document.createElement('div'); cell.className = 'ttt-cell'; cell.id = `ttt-${r}-${c}`; cell.onclick = () => { if (currentGameType === 'Endless Tic-Tac-Toe') socket.emit('makeTTTEndlessMove', { roomName: currentRoom, r, c }); }; tttBoard.appendChild(cell); } }
 for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = document.createElement('div'); cell.className = 'c4-cell'; cell.id = `c4-${r}-${c}`; cell.onclick = () => { if (currentGameType === 'Connect 4') socket.emit('makeC4Move', { roomName: currentRoom, col: c }); }; c4Board.appendChild(cell); } }
 for (let r = 0; r < 7; r++) { for (let c = 0; c < 7; c++) { const div = document.createElement('div'); if (r % 2 === 0 && c % 2 === 0) div.className = 'dab-dot'; else if (r % 2 === 0 && c % 2 !== 0) { div.className = 'dab-hline'; const hRow = r / 2; const hCol = Math.floor(c / 2); div.id = `h-${hRow}-${hCol}`; div.onclick = () => { if (currentGameType === 'Dots and Boxes') socket.emit('makeDABMove', { roomName: currentRoom, type: 'h', r: hRow, c: hCol }); }; } else if (r % 2 !== 0 && c % 2 === 0) { div.className = 'dab-vline'; const vRow = Math.floor(r / 2); const vCol = c / 2; div.id = `v-${vRow}-${vCol}`; div.onclick = () => { if (currentGameType === 'Dots and Boxes') socket.emit('makeDABMove', { roomName: currentRoom, type: 'v', r: vRow, c: vCol }); }; } else { div.className = 'dab-box'; div.id = `box-${Math.floor(r / 2)}-${Math.floor(c / 2)}`; } dabBoard.appendChild(div); } }
 for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const myCell = document.createElement('div'); myCell.className = 'bs-cell'; myCell.id = `bs-my-${r}-${c}`; bsMyBoard.appendChild(myCell); const targetCell = document.createElement('div'); targetCell.className = 'bs-cell'; targetCell.id = `bs-target-${r}-${c}`; targetCell.onclick = () => { if (currentGameType === 'Battleship') socket.emit('makeBattleshipMove', { roomName: currentRoom, r, c }); }; bsTrackingBoard.appendChild(targetCell); } }
 
-// MINI CHESS BOARD GENERATION (4x8)
 for (let r = 0; r < 4; r++) { 
     for (let c = 0; c < 8; c++) { 
         const cell = document.createElement('div'); 
@@ -148,7 +197,6 @@ socket.on('startGame', (gameState) => {
     
     const p1Data = gameState.playerData[Object.keys(gameState.players)[0]]; const p2Data = gameState.playerData[Object.keys(gameState.players)[1]];
     
-    // EXTRACT AND APPLY IN-GAME COSMETICS
     window.p1Color = COLOR_MAP[p1Data.equipped?.piece?.replace('piece_', '')] || 'var(--primary)';
     window.p2Color = COLOR_MAP[p2Data.equipped?.piece?.replace('piece_', '')] || 'var(--secondary)';
     
@@ -186,7 +234,8 @@ socket.on('startGame', (gameState) => {
     else if (currentGameType === 'Crazy Eights') { c8Container.style.display = 'flex'; turnDisplay.innerText = "Dealing cards..."; }
     else if (currentGameType === 'Rummy') { rmContainer.style.display = 'flex'; turnDisplay.innerText = "Dealing cards..."; }
 
-    // INITIALIZE BUCK POOL
+    // Start UI systems
+    resetTurnTimer();
     const myData = gameState.playerData[socket.id];
     const oppId = Object.keys(gameState.players).find(id => id !== socket.id);
     const oppData = gameState.playerData[oppId];
@@ -213,13 +262,14 @@ function updateTTTEndlessUI(game) {
     if (game.history['X'].length === 3) { let oldestX = game.history['X'][0]; const span = document.getElementById(`ttt-${oldestX.r}-${oldestX.c}`).querySelector('span'); if (span) span.classList.add('flicker-piece'); }
     if (game.history['O'].length === 3) { let oldestO = game.history['O'][0]; const span = document.getElementById(`ttt-${oldestO.r}-${oldestO.c}`).querySelector('span'); if (span) span.classList.add('flicker-piece'); }
     if (game.winLine) { game.winLine.forEach(([r, c]) => { document.getElementById(`ttt-${r}-${c}`).classList.add('sttt-win-pulse'); }); }
+    resetTurnTimer();
 }
 
 function randomizeBattleship() { localBattleshipBoard = Array(10).fill(null).map(() => Array(10).fill(0)); const ships = [5, 4, 3, 3, 2]; for (let shipLen of ships) { let placed = false; while (!placed) { const isHoriz = Math.random() > 0.5; const r = Math.floor(Math.random() * (isHoriz ? 10 : 10 - shipLen)); const c = Math.floor(Math.random() * (isHoriz ? 10 - shipLen : 10)); let canPlace = true; for (let i = 0; i < shipLen; i++) { if (isHoriz && localBattleshipBoard[r][c + i] !== 0) canPlace = false; if (!isHoriz && localBattleshipBoard[r + i][c] !== 0) canPlace = false; } if (canPlace) { for (let i = 0; i < shipLen; i++) { if (isHoriz) localBattleshipBoard[r][c + i] = 1; else localBattleshipBoard[r + i][c] = 1; } placed = true; } } } drawLocalBattleship(); }
 function drawLocalBattleship() { for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const cell = document.getElementById(`bs-my-${r}-${c}`); cell.className = localBattleshipBoard[r][c] === 1 ? 'bs-cell bs-ship' : 'bs-cell'; } } }
 document.getElementById('bs-randomize-btn').addEventListener('click', randomizeBattleship); document.getElementById('bs-ready-btn').addEventListener('click', () => { document.getElementById('bs-setup-menu').style.display = 'none'; socket.emit('submitBattleshipBoard', { roomName: currentRoom, board: localBattleshipBoard }); });
-socket.on('battleshipWaiting', () => { turnDisplay.innerText = "Waiting for opponent to ready up..."; turnDisplay.style.color = "var(--secondary)"; }); socket.on('battleshipStartPlaying', (data) => { turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn to Fire!" : "⏳ Incoming Fire..."; turnDisplay.style.color = data.turn === mySymbol ? window.p1Color : "var(--secondary)"; });
-socket.on('updateBattleshipBoard', (data) => { turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn to Fire!" : "⏳ Incoming Fire..."; turnDisplay.style.color = data.turn === mySymbol ? window.p1Color : "var(--secondary)"; for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const myCell = document.getElementById(`bs-my-${r}-${c}`); if (data.myBoard[r][c] === 1) myCell.className = 'bs-cell bs-ship'; else if (data.myBoard[r][c] === 2) { myCell.className = 'bs-cell bs-miss'; myCell.innerText = '•'; } else if (data.myBoard[r][c] === 3) { myCell.className = 'bs-cell bs-hit'; myCell.innerText = 'X'; } const targetCell = document.getElementById(`bs-target-${r}-${c}`); if (data.trackingBoard[r][c] === 0) { targetCell.className = 'bs-cell'; targetCell.innerText = ''; } else if (data.trackingBoard[r][c] === 2) { targetCell.className = 'bs-cell bs-miss'; targetCell.innerText = '•'; } else if (data.trackingBoard[r][c] === 3) { targetCell.className = 'bs-cell bs-hit'; targetCell.innerText = 'X'; } } } });
+socket.on('battleshipWaiting', () => { turnDisplay.innerText = "Waiting for opponent to ready up..."; turnDisplay.style.color = "var(--secondary)"; }); socket.on('battleshipStartPlaying', (data) => { turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn to Fire!" : "⏳ Incoming Fire..."; turnDisplay.style.color = data.turn === mySymbol ? window.p1Color : "var(--secondary)"; resetTurnTimer(); });
+socket.on('updateBattleshipBoard', (data) => { turnDisplay.innerText = data.turn === mySymbol ? "🎯 Your Turn to Fire!" : "⏳ Incoming Fire..."; turnDisplay.style.color = data.turn === mySymbol ? window.p1Color : "var(--secondary)"; for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const myCell = document.getElementById(`bs-my-${r}-${c}`); if (data.myBoard[r][c] === 1) myCell.className = 'bs-cell bs-ship'; else if (data.myBoard[r][c] === 2) { myCell.className = 'bs-cell bs-miss'; myCell.innerText = '•'; } else if (data.myBoard[r][c] === 3) { myCell.className = 'bs-cell bs-hit'; myCell.innerText = 'X'; } const targetCell = document.getElementById(`bs-target-${r}-${c}`); if (data.trackingBoard[r][c] === 0) { targetCell.className = 'bs-cell'; targetCell.innerText = ''; } else if (data.trackingBoard[r][c] === 2) { targetCell.className = 'bs-cell bs-miss'; targetCell.innerText = '•'; } else if (data.trackingBoard[r][c] === 3) { targetCell.className = 'bs-cell bs-hit'; targetCell.innerText = 'X'; } } } resetTurnTimer(); });
 socket.on('revealBattleship', (secretBoards) => { const opponentId = Object.keys(secretBoards).find(id => id !== socket.id); const opponentBoard = secretBoards[opponentId]; for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const targetCell = document.getElementById(`bs-target-${r}-${c}`); if (opponentBoard[r][c] === 1 && !targetCell.classList.contains('bs-hit')) { targetCell.className = 'bs-cell bs-ship-revealed'; targetCell.innerText = '🚢'; } } } });
 
 socket.on('updateBoard', updateSTTTUI);
@@ -238,6 +288,7 @@ function updateSTTTUI(game) {
         for (let j = 0; j < 9; j++) { const microDiv = document.getElementById(`micro-${i}-${j}`); if (microDiv) { const cellValue = game.board[i][j]; if (cellValue && microDiv.innerHTML === '') { const color = cellValue === 'X' ? window.p1Color : window.p2Color; microDiv.innerHTML = `<span style="color: ${color}; animation: drawMark 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;">${cellValue}</span>`; } } } 
     } 
     if (game.winLine) { game.winLine.forEach(i => { document.getElementById(`macro-${i}`).classList.add('sttt-win-pulse'); }); }
+    resetTurnTimer();
 }
 
 socket.on('updateC4Board', (game) => { 
@@ -255,6 +306,7 @@ socket.on('updateC4Board', (game) => {
         } 
     } 
     if (game.winLine) { game.winLine.forEach(([r, c]) => { document.getElementById(`c4-${r}-${c}`).classList.add('c4-win-pulse'); }); } 
+    resetTurnTimer();
 });
 
 socket.on('updateDABBoard', (game) => { 
@@ -264,6 +316,7 @@ socket.on('updateDABBoard', (game) => {
     for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const hLine = document.getElementById(`h-${r}-${c}`); if (game.hLines[r][c] === 'Red') { hLine.style.background = window.p1Color; hLine.style.boxShadow = `0 0 10px ${window.p1Color}`; hLine.style.cursor = 'default'; } else if (game.hLines[r][c] === 'Blue') { hLine.style.background = window.p2Color; hLine.style.boxShadow = `0 0 10px ${window.p2Color}`; hLine.style.cursor = 'default'; } } } 
     for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const vLine = document.getElementById(`v-${r}-${c}`); if (game.vLines[r][c] === 'Red') { vLine.style.background = window.p1Color; vLine.style.boxShadow = `0 0 10px ${window.p1Color}`; vLine.style.cursor = 'default'; } else if (game.vLines[r][c] === 'Blue') { vLine.style.background = window.p2Color; vLine.style.boxShadow = `0 0 10px ${window.p2Color}`; vLine.style.cursor = 'default'; } } } 
     for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const box = document.getElementById(`box-${r}-${c}`); if (game.boxes[r][c] === 'Red') { box.style.background = window.p1Color + '25'; box.style.color = window.p1Color; box.innerText = 'R'; box.style.transform = 'scale(0.9)'; box.style.borderRadius = '10px'; } else if (game.boxes[r][c] === 'Blue') { box.style.background = window.p2Color + '25'; box.style.color = window.p2Color; box.innerText = 'B'; box.style.transform = 'scale(0.9)'; box.style.borderRadius = '10px'; } } } 
+    resetTurnTimer();
 });
 
 socket.on('updateChessBoard', updateChessUI); 
@@ -301,6 +354,7 @@ function updateChessUI(game) {
             }
         } 
     } 
+    resetTurnTimer();
 }
 
 c8Deck.onclick = () => { if (currentGameType === 'Crazy Eights') socket.emit('makeC8Draw', { roomName: currentRoom }); };
@@ -326,6 +380,7 @@ socket.on('updateCrazyEights', (data) => {
         if (lastTopCardStr !== cardStr) { c8Discard.className = `c8-card ${colorClass}`; void c8Discard.offsetWidth; c8Discard.classList.add('drop-anim'); lastTopCardStr = cardStr; } else { c8Discard.className = `c8-card ${colorClass} drop-anim`; }
     }
     if (data.activeSuit) { c8ActiveSuit.innerText = data.activeSuit; c8ActiveSuit.className = (data.activeSuit === '♥' || data.activeSuit === '♦') ? 'c8-red' : 'c8-black'; } else { c8ActiveSuit.innerText = ''; }
+    resetTurnTimer();
 });
 
 rmDeck.onclick = () => { if (currentGameType === 'Rummy') socket.emit('makeRummyDraw', { roomName: currentRoom, source: 'deck' }); };
@@ -365,6 +420,7 @@ socket.on('updateRummy', (data) => {
         meld.cards.forEach(card => { let colorClass = (card.suit === '♥' || card.suit === '♦') ? 'c8-red' : 'c8-black'; meldDiv.innerHTML += `<div class="rm-card ${colorClass}"><div>${card.val}</div><div>${card.suit}</div></div>`; });
         meldDiv.onclick = () => { if (!isMyPlayPhase) return; rummySelectedMeldId = meld.id; document.querySelectorAll('.rm-meld').forEach(m => m.classList.remove('selected')); meldDiv.classList.add('selected'); }; rmMeldArea.appendChild(meldDiv);
     });
+    resetTurnTimer();
 });
 
 document.addEventListener('keydown', (e) => { 
@@ -373,6 +429,8 @@ document.addEventListener('keydown', (e) => {
 }); 
 
 socket.on('gameOverScreen', (data) => { 
+    stopTurnTimer();
+    
     const amIWinner = data.winnerId === socket.id; const amILoser = data.loserId === socket.id; 
     if (currentGameType && (amIWinner || amILoser || data.isTie)) { if (window.recordGameResult) window.recordGameResult(currentGameType, amIWinner, data.isTie); }
     currentGameType = null; const title = document.getElementById('go-title'); const msg = document.getElementById('go-message'); const points = document.getElementById('go-points'); const modal = document.getElementById('game-over-modal'); const playersContainer = document.getElementById('go-players-container'); 
@@ -384,9 +442,16 @@ socket.on('gameOverScreen', (data) => {
 
     if (data.isTie) { title.innerText = "It's a Tie! 🤝"; title.className = "win-text"; msg.innerText = "Good game!"; points.innerText = "+0 Points"; points.className = ""; playersContainer.style.display = 'none';
     } else { 
-        playersContainer.style.display = 'flex'; title.innerText = amIWinner ? "Victory! 🏆" : "Defeat! 💀"; title.className = amIWinner ? "win-text" : "lose-text"; msg.innerText = data.isQuit ? (amIWinner ? "Your opponent fled!" : "You quit the game!") : (amIWinner ? "You crushed them!" : "Better luck next time."); 
+        playersContainer.style.display = 'flex'; title.innerText = amIWinner ? "Victory! 🏆" : "Defeat! 💀"; title.className = amIWinner ? "win-text" : "lose-text"; 
         
-        // POOL WINNINGS UPDATE
+        // NEW: Anti-Cheat AFK Game Over Logic
+        if (data.isQuit) {
+            if (data.isAfk) { msg.innerText = amIWinner ? "Your opponent went AFK!" : "You ran out of time!"; }
+            else { msg.innerText = amIWinner ? "Your opponent fled!" : "You quit the game!"; }
+        } else {
+            msg.innerText = amIWinner ? "You crushed them!" : "Better luck next time.";
+        }
+        
         const poolWinningsStr = data.poolWinnings ? `\n+${data.poolWinnings} Wager Pool 🤑` : '';
         points.innerText = amIWinner ? `+${data.pointsWon} Points\n+5 Bucks 💵${poolWinningsStr}` : `-${data.pointsLost} Points`; 
         points.className = amIWinner ? "win-text" : "lose-text"; 
@@ -405,6 +470,7 @@ document.getElementById('viewBoardBtn').addEventListener('click', () => { docume
 document.getElementById('returnToResultsBtn').addEventListener('click', () => { document.getElementById('game-over-modal').classList.remove('peek-mode'); document.getElementById('returnToResultsBtn').style.display = 'none'; });
 
 function resetBoardUI() {
+    stopTurnTimer();
     stttBoard.innerHTML = ''; for (let i = 0; i < 9; i++) { const macroCell = document.createElement('div'); macroCell.className = 'macro-cell'; macroCell.id = `macro-${i}`; for (let j = 0; j < 9; j++) { const microCell = document.createElement('div'); microCell.className = 'micro-cell'; microCell.id = `micro-${i}-${j}`; microCell.onclick = () => { if (currentGameType === 'Super Tic-Tac-Toe') socket.emit('makeMove', { roomName: currentRoom, macroIndex: i, microIndex: j }); }; macroCell.appendChild(microCell); } stttBoard.appendChild(macroCell); }
     tttBoard.innerHTML = ''; for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const cell = document.createElement('div'); cell.className = 'ttt-cell'; cell.id = `ttt-${r}-${c}`; cell.onclick = () => { if (currentGameType === 'Endless Tic-Tac-Toe') socket.emit('makeTTTEndlessMove', { roomName: currentRoom, r, c }); }; tttBoard.appendChild(cell); } }
     for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = document.getElementById(`c4-${r}-${c}`); cell.className = 'c4-cell'; cell.removeAttribute('data-filled'); cell.removeAttribute('style'); } }
@@ -414,9 +480,7 @@ function resetBoardUI() {
     c8MyHand.innerHTML = ''; c8OppHand.innerHTML = ''; c8Discard.innerHTML = ''; c8ActiveSuit.innerText = ''; document.getElementById('c8-suit-modal').style.display = 'none'; lastTopCardStr = ""; 
     rmMyHand.innerHTML = ''; rmOppHand.innerHTML = ''; rmDiscardPile.innerHTML = ''; rmMeldArea.innerHTML = ''; rummySelectedIndices = []; rummySelectedMeldId = null;
     
-    // HIDE BUCK POOL
     if (window.hideBuckPool) window.hideBuckPool();
-    
     document.getElementById('game-over-modal').classList.remove('peek-mode'); document.getElementById('returnToResultsBtn').style.display = 'none'; document.getElementById('roulette-screen').style.display = 'none';
 }
 
