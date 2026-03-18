@@ -33,9 +33,7 @@ let localBattleshipBoard = Array(10).fill(null).map(() => Array(10).fill(0));
 let pendingC8CardIndex = null; let lastTopCardStr = ""; 
 let rummySelectedIndices = []; let rummySelectedMeldId = null;
 
-// NEW: VISUAL AFK TIMER LOGIC
-let localTimerInterval = null;
-let localTimeLeft = 60;
+let localTimerInterval = null; let localTimeLeft = 60;
 
 function resetTurnTimer() {
     if (localTimerInterval) clearInterval(localTimerInterval);
@@ -132,7 +130,6 @@ document.getElementById('closeLockerBtn').addEventListener('click', () => { docu
 findMatchBtn.addEventListener('click', () => { socket.emit('joinQueue', myUsername); statusDiv.innerText = 'Searching for a match... ⏳'; findMatchBtn.disabled = true; }); 
 document.getElementById('quitBtn').addEventListener('click', () => { socket.emit('quitGame'); });
 
-// ANTI-CHEAT QUEUE ERROR LISTENER
 socket.on('queueError', (msg) => { 
     alert(msg); 
     statusDiv.innerText = 'Ready to play?'; 
@@ -234,7 +231,6 @@ socket.on('startGame', (gameState) => {
     else if (currentGameType === 'Crazy Eights') { c8Container.style.display = 'flex'; turnDisplay.innerText = "Dealing cards..."; }
     else if (currentGameType === 'Rummy') { rmContainer.style.display = 'flex'; turnDisplay.innerText = "Dealing cards..."; }
 
-    // Start UI systems
     resetTurnTimer();
     const myData = gameState.playerData[socket.id];
     const oppId = Object.keys(gameState.players).find(id => id !== socket.id);
@@ -275,7 +271,12 @@ socket.on('revealBattleship', (secretBoards) => { const opponentId = Object.keys
 socket.on('updateBoard', updateSTTTUI);
 function updateSTTTUI(game) { 
     turnDisplay.innerText = game.turn === mySymbol ? "🎯 Your Turn!" : "⏳ Opponent's Turn..."; turnDisplay.style.color = game.turn === mySymbol ? (mySymbol === 'X' ? window.p1Color : window.p2Color) : "var(--secondary)"; 
-    document.querySelectorAll('.macro-cell').forEach(c => { c.classList.remove('sttt-win-pulse'); c.classList.remove('highlight-active'); c.classList.remove('highlight-waiting'); });
+    document.querySelectorAll('.macro-cell').forEach(c => { 
+        c.classList.remove('sttt-win-pulse'); 
+        c.classList.remove('highlight-active'); 
+        c.classList.remove('highlight-waiting'); 
+        c.classList.remove('disabled'); 
+    });
 
     for (let i = 0; i < 9; i++) { 
         const macroDiv = document.getElementById(`macro-${i}`); 
@@ -444,7 +445,6 @@ socket.on('gameOverScreen', (data) => {
     } else { 
         playersContainer.style.display = 'flex'; title.innerText = amIWinner ? "Victory! 🏆" : "Defeat! 💀"; title.className = amIWinner ? "win-text" : "lose-text"; 
         
-        // NEW: Anti-Cheat AFK Game Over Logic
         if (data.isQuit) {
             if (data.isAfk) { msg.innerText = amIWinner ? "Your opponent went AFK!" : "You ran out of time!"; }
             else { msg.innerText = amIWinner ? "Your opponent fled!" : "You quit the game!"; }

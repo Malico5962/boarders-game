@@ -25,20 +25,21 @@ const User = mongoose.model('User', userSchema);
 
 let matchmakingQueue = []; const activeGames = {}; let onlinePlayersCount = 0; const privateRooms = {}; 
 
-// AFK TIMER ENGINE
+// NEW: Store timers securely outside of the game objects!
+const turnTimers = {};
+
 function startTurnTimer(roomName) {
     const game = activeGames[roomName];
     if (!game) return;
     
-    if (game.turnTimer) clearTimeout(game.turnTimer);
+    if (turnTimers[roomName]) clearTimeout(turnTimers[roomName]);
 
-    game.turnTimer = setTimeout(() => {
+    turnTimers[roomName] = setTimeout(() => {
         const currentGame = activeGames[roomName];
         if (!currentGame || currentGame.winner) return;
 
         let failingPlayerId = null;
         
-        // Battleship setup phase edge case
         if (currentGame.gameType === 'Battleship' && currentGame.phase === 'setup') {
             failingPlayerId = Object.keys(currentGame.ready).find(id => !currentGame.ready[id]);
         } else {
@@ -47,10 +48,9 @@ function startTurnTimer(roomName) {
 
         if (failingPlayerId) {
             const winningPlayerId = Object.keys(currentGame.players).find(id => id !== failingPlayerId);
-            // End game as Quit (true) AND AFK (true)
             handleGameEnd(roomName, winningPlayerId, failingPlayerId, true, true); 
         }
-    }, 60000); // 60 Seconds
+    }, 60000); 
 }
 
 app.post('/register', async (req, res) => { 
@@ -121,8 +121,11 @@ app.post('/shop/equip', async (req, res) => {
 async function handleGameEnd(roomName, winnerId, loserId, isQuit = false, isAfk = false) { 
     const game = activeGames[roomName]; if (!game) return; 
     
-    // Clear AFK timer to prevent memory leaks!
-    if (game.turnTimer) clearTimeout(game.turnTimer);
+    // Safely clear the timer from the dictionary
+    if (turnTimers[roomName]) {
+        clearTimeout(turnTimers[roomName]);
+        delete turnTimers[roomName];
+    }
 
     let newWinnerRank = 100, newLoserRank = 100, newWinnerBucks = 0; let pointsWon = 0, pointsLost = 0;
     let winnerData = { username: game.playerUsernames ? game.playerUsernames[winnerId] : 'Winner', pfp: `https://api.dicebear.com/7.x/bottts/svg?seed=${winnerId}`, isAnon: false, equipped: { border: 'none', banner: 'none', piece: 'none' } };
@@ -194,9 +197,7 @@ async function initializeGame(roomName, chosenGame, player1, player2, privateCod
         if (chosenGame === 'Crazy Eights') broadcastCrazyEightsState(roomName); 
         if (chosenGame === 'Rummy') broadcastRummyState(roomName); 
         
-        // START THE ROUND TIMER
         startTurnTimer(roomName);
-
     }, 5000);
 }
 
@@ -209,7 +210,6 @@ io.on('connection', (socket) => {
     socket.on('joinQueue', (username) => { 
         socket.username = username; 
         
-        // ANTI-CHEAT: No Self Play in Queue (Unless "Testing")
         if (username !== 'Testing') {
             if (matchmakingQueue.some(p => p.username === username)) return socket.emit('queueError', 'You are already in the matchmaking queue!');
             const inGame = Object.values(activeGames).some(g => g.playerUsernames && Object.values(g.playerUsernames).includes(username));
@@ -224,7 +224,6 @@ io.on('connection', (socket) => {
     socket.on('joinPrivateRoom', ({ username, code }) => { 
         const room = privateRooms[code]; if (!room) return socket.emit('privateError', 'Room not found!'); if (room.players.length >= 2) return socket.emit('privateError', 'Room is full!'); 
         
-        // ANTI-CHEAT: No Self Play in Private Rooms (Unless "Testing")
         if (username !== 'Testing') {
             const inGame = Object.values(activeGames).some(g => g.playerUsernames && Object.values(g.playerUsernames).includes(username));
             if (inGame || room.players.some(p => p.username === username)) return socket.emit('privateError', 'You are already in this room or an active game!');
@@ -270,7 +269,6 @@ io.on('connection', (socket) => {
         game.pendingAllocation = 0; 
     });
 
-    // MAKE SURE TO START THE TIMER AFTER EVERY MOVE!
     socket.on('makeMove', ({ roomName, macroIndex, microIndex }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Super Tic-Tac-Toe') { stttLogic.handleMove(game, socket.id, macroIndex, microIndex); io.to(roomName).emit('updateBoard', game); if (game.winner) { setTimeout(() => { handleGameEnd(roomName, game.winner === 'Tie' ? null : Object.keys(game.players).find(id => game.players[id] === game.winner), game.winner === 'Tie' ? null : Object.keys(game.players).find(id => game.players[id] !== game.winner), false); }, 2500); } else { startTurnTimer(roomName); } } });
     socket.on('makeC4Move', ({ roomName, col }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Connect 4') { c4Logic.handleMove(game, socket.id, col); io.to(roomName).emit('updateC4Board', game); if (game.winner) { setTimeout(() => { handleGameEnd(roomName, game.winner === 'Tie' ? null : Object.keys(game.players).find(id => game.players[id] === game.winner), game.winner === 'Tie' ? null : Object.keys(game.players).find(id => game.players[id] !== game.winner), false); }, 2500); } else { startTurnTimer(roomName); } } });
     socket.on('makeDABMove', ({ roomName, type, r, c }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Dots and Boxes') { dabLogic.handleMove(game, socket.id, type, r, c); io.to(roomName).emit('updateDABBoard', game); if (game.winner) handleGameEnd(roomName, game.winner === 'Tie' ? null : Object.keys(game.players).find(id => game.players[id] === game.winner), game.winner === 'Tie' ? null : Object.keys(game.players).find(id => game.players[id] !== game.winner), false); else startTurnTimer(roomName); } });
