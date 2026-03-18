@@ -55,7 +55,7 @@ function updateDashboardUI() {
     const bannerEq = myUserObj.equipped?.banner?.replace('banner_', '') || 'none';
     
     dashPfp.style.borderColor = COLOR_MAP[borderEq] || 'white';
-    document.querySelector('.dash-profile-top').style.background = COLOR_MAP[bannerEq] ? `${COLOR_MAP[bannerEq]}40` : 'rgba(255,255,255,0.5)'; // Add transparency
+    document.querySelector('.dash-profile-top').style.background = COLOR_MAP[bannerEq] ? `${COLOR_MAP[bannerEq]}40` : 'rgba(255,255,255,0.5)'; 
 
     document.getElementById('playerDescDisplay').innerText = `"${myUserObj.description}"`;
 }
@@ -73,7 +73,7 @@ document.getElementById('saveAccountBtn').addEventListener('click', async () => 
     if (res.ok) { myUserObj = data.user; myUsername = myUserObj.username; localStorage.setItem('boarders_account', JSON.stringify({ username: myUserObj.username, password: newPassword || JSON.parse(localStorage.getItem('boarders_account')).password })); updateDashboardUI(); document.getElementById('account-modal').style.display = 'none'; } else { document.getElementById('account-error').innerText = data.error; }
 });
 
-document.getElementById('viewLeaderboardBtn').addEventListener('click', async () => { document.getElementById('leaderboard-modal').style.display = 'flex'; const res = await fetch('/leaderboard'); const data = await res.json(); document.getElementById('leaderboard-content').innerHTML = data.map((u, i) => `<div class="leaderboard-item"><div class="lb-left"><span style="font-weight: 900; margin-right: 15px; color: var(--secondary);">#${i+1}</span><img src="${u.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username}`}"><span>${u.username}</span></div><span style="color:var(--primary);">${u.rank} ⭐</span></div>`).join(''); }); 
+document.getElementById('viewLeaderboardBtn').addEventListener('click', async () => { document.getElementById('leaderboard-modal').style.display = 'flex'; const res = await fetch('/leaderboard'); const data = await res.json(); document.getElementById('leaderboard-content').innerHTML = data.map((u, i) => `<div class="leaderboard-item"><div class="lb-left"><span style="font-weight: 900; margin-right: 15px; color: var(--secondary);">#${i+1}</span><img src="${u.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username}`}"><span>${u.username}</span></div><div><span style="color:var(--primary); margin-right: 10px;">${u.rank} ⭐</span><span style="color:#2ed573;">${u.bucks || 0} 💵</span></div></div>`).join(''); }); 
 document.getElementById('closeLeaderboardBtn').addEventListener('click', () => { document.getElementById('leaderboard-modal').style.display = 'none'; });
 document.getElementById('viewStatsBtn').addEventListener('click', () => { if (window.renderStatsUI) window.renderStatsUI(); document.getElementById('stats-modal').style.display = 'flex'; });
 document.getElementById('closeStatsBtn').addEventListener('click', () => { document.getElementById('stats-modal').style.display = 'none'; });
@@ -81,7 +81,9 @@ document.getElementById('howToPlayBtn').addEventListener('click', () => { if (wi
 document.getElementById('closeHowToPlayBtn').addEventListener('click', () => { document.getElementById('howtoplay-modal').style.display = 'none'; });
 
 document.getElementById('openShopBtn').addEventListener('click', () => { if (window.renderShop) window.renderShop(); document.getElementById('shop-modal').style.display = 'flex'; });
+document.getElementById('closeShopBtn').addEventListener('click', () => { document.getElementById('shop-modal').style.display = 'none'; });
 document.getElementById('openLockerBtn').addEventListener('click', () => { if (window.renderLocker) window.renderLocker(); document.getElementById('locker-modal').style.display = 'flex'; });
+document.getElementById('closeLockerBtn').addEventListener('click', () => { document.getElementById('locker-modal').style.display = 'none'; });
 
 findMatchBtn.addEventListener('click', () => { socket.emit('joinQueue', myUsername); statusDiv.innerText = 'Searching for a match... ⏳'; findMatchBtn.disabled = true; }); 
 document.getElementById('quitBtn').addEventListener('click', () => { socket.emit('quitGame'); });
@@ -112,7 +114,7 @@ for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = documen
 for (let r = 0; r < 7; r++) { for (let c = 0; c < 7; c++) { const div = document.createElement('div'); if (r % 2 === 0 && c % 2 === 0) div.className = 'dab-dot'; else if (r % 2 === 0 && c % 2 !== 0) { div.className = 'dab-hline'; const hRow = r / 2; const hCol = Math.floor(c / 2); div.id = `h-${hRow}-${hCol}`; div.onclick = () => { if (currentGameType === 'Dots and Boxes') socket.emit('makeDABMove', { roomName: currentRoom, type: 'h', r: hRow, c: hCol }); }; } else if (r % 2 !== 0 && c % 2 === 0) { div.className = 'dab-vline'; const vRow = Math.floor(r / 2); const vCol = c / 2; div.id = `v-${vRow}-${vCol}`; div.onclick = () => { if (currentGameType === 'Dots and Boxes') socket.emit('makeDABMove', { roomName: currentRoom, type: 'v', r: vRow, c: vCol }); }; } else { div.className = 'dab-box'; div.id = `box-${Math.floor(r / 2)}-${Math.floor(c / 2)}`; } dabBoard.appendChild(div); } }
 for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const myCell = document.createElement('div'); myCell.className = 'bs-cell'; myCell.id = `bs-my-${r}-${c}`; bsMyBoard.appendChild(myCell); const targetCell = document.createElement('div'); targetCell.className = 'bs-cell'; targetCell.id = `bs-target-${r}-${c}`; targetCell.onclick = () => { if (currentGameType === 'Battleship') socket.emit('makeBattleshipMove', { roomName: currentRoom, r, c }); }; bsTrackingBoard.appendChild(targetCell); } }
 
-// NEW: MINI CHESS BOARD GENERATION (4x8)
+// MINI CHESS BOARD GENERATION (4x8)
 for (let r = 0; r < 4; r++) { 
     for (let c = 0; c < 8; c++) { 
         const cell = document.createElement('div'); 
@@ -183,6 +185,12 @@ socket.on('startGame', (gameState) => {
     else if (currentGameType === 'Battleship') { bsContainer.style.display = 'block'; document.getElementById('bs-setup-menu').style.display = 'block'; document.getElementById('bs-randomize-btn').click(); turnDisplay.innerText = "Arrange your fleet!"; turnDisplay.style.color = "var(--text)"; }
     else if (currentGameType === 'Crazy Eights') { c8Container.style.display = 'flex'; turnDisplay.innerText = "Dealing cards..."; }
     else if (currentGameType === 'Rummy') { rmContainer.style.display = 'flex'; turnDisplay.innerText = "Dealing cards..."; }
+
+    // INITIALIZE BUCK POOL
+    const myData = gameState.playerData[socket.id];
+    const oppId = Object.keys(gameState.players).find(id => id !== socket.id);
+    const oppData = gameState.playerData[oppId];
+    if (window.initBuckPool) window.initBuckPool(myData.bucks, oppData.bucks);
 });
 
 socket.on('updateTTTEndlessBoard', updateTTTEndlessUI);
@@ -376,10 +384,15 @@ socket.on('gameOverScreen', (data) => {
 
     if (data.isTie) { title.innerText = "It's a Tie! 🤝"; title.className = "win-text"; msg.innerText = "Good game!"; points.innerText = "+0 Points"; points.className = ""; playersContainer.style.display = 'none';
     } else { 
-        playersContainer.style.display = 'flex'; title.innerText = amIWinner ? "Victory! 🏆" : "Defeat! 💀"; title.className = amIWinner ? "win-text" : "lose-text"; msg.innerText = data.isQuit ? (amIWinner ? "Your opponent fled!" : "You quit the game!") : (amIWinner ? "You crushed them!" : "Better luck next time."); points.innerText = amIWinner ? `+${data.pointsWon} Points\n+5 Bucks 💵` : `-${data.pointsLost} Points`; points.className = amIWinner ? "win-text" : "lose-text"; 
+        playersContainer.style.display = 'flex'; title.innerText = amIWinner ? "Victory! 🏆" : "Defeat! 💀"; title.className = amIWinner ? "win-text" : "lose-text"; msg.innerText = data.isQuit ? (amIWinner ? "Your opponent fled!" : "You quit the game!") : (amIWinner ? "You crushed them!" : "Better luck next time."); 
+        
+        // POOL WINNINGS UPDATE
+        const poolWinningsStr = data.poolWinnings ? `\n+${data.poolWinnings} Wager Pool 🤑` : '';
+        points.innerText = amIWinner ? `+${data.pointsWon} Points\n+5 Bucks 💵${poolWinningsStr}` : `-${data.pointsLost} Points`; 
+        points.className = amIWinner ? "win-text" : "lose-text"; 
+        
         if (amIWinner) { playerRankDisplay.innerText = data.newWinnerRank; myUserObj.rank = data.newWinnerRank; } else { playerRankDisplay.innerText = data.newLoserRank; myUserObj.rank = data.newLoserRank; }
         
-        // GameOver PFP Cosmetics
         const wBorder = COLOR_MAP[data.winnerData.equipped?.border?.replace('border_', '')] || 'var(--secondary)';
         const lBorder = COLOR_MAP[data.loserData.equipped?.border?.replace('border_', '')] || 'var(--primary)';
         
@@ -400,6 +413,10 @@ function resetBoardUI() {
     for (let r = 0; r < 4; r++) { for (let c = 0; c < 8; c++) { const cell = document.getElementById(`mc-${r}-${c}`); if(cell) { cell.innerHTML = ''; cell.classList.remove('mc-selected'); } } }
     c8MyHand.innerHTML = ''; c8OppHand.innerHTML = ''; c8Discard.innerHTML = ''; c8ActiveSuit.innerText = ''; document.getElementById('c8-suit-modal').style.display = 'none'; lastTopCardStr = ""; 
     rmMyHand.innerHTML = ''; rmOppHand.innerHTML = ''; rmDiscardPile.innerHTML = ''; rmMeldArea.innerHTML = ''; rummySelectedIndices = []; rummySelectedMeldId = null;
+    
+    // HIDE BUCK POOL
+    if (window.hideBuckPool) window.hideBuckPool();
+    
     document.getElementById('game-over-modal').classList.remove('peek-mode'); document.getElementById('returnToResultsBtn').style.display = 'none'; document.getElementById('roulette-screen').style.display = 'none';
 }
 

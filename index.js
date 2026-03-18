@@ -28,9 +28,8 @@ let matchmakingQueue = []; const activeGames = {}; let onlinePlayersCount = 0; c
 app.post('/register', async (req, res) => { try { const { username, password } = req.body; if (await User.findOne({ username })) return res.status(400).json({ error: 'Username taken' }); const hashedPassword = await bcrypt.hash(password, 10); const defaultPfp = `https://api.dicebear.com/7.x/bottts/svg?seed=${username}`; const newUser = new User({ username, password: hashedPassword, rank: 100, bucks: 0, profilePic: defaultPfp }); await newUser.save(); res.json({ message: 'Success!', user: newUser }); } catch (err) { res.status(500).json({ error: 'Server Error' }); } });
 app.post('/login', async (req, res) => { try { const { username, password } = req.body; const user = await User.findOne({ username }); if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Invalid credentials' }); res.json({ message: 'Success!', user }); } catch (err) { res.status(500).json({ error: 'Server Error' }); } });
 app.post('/update-profile', async (req, res) => { try { const { currentUsername, newUsername, newPassword, profilePic, description, isAnonymous } = req.body; const user = await User.findOne({ username: currentUsername }); if (!user) return res.status(404).json({ error: 'User not found' }); if (newUsername && newUsername !== currentUsername) { const exists = await User.findOne({ username: newUsername }); if (exists) return res.status(400).json({ error: 'New username already taken' }); user.username = newUsername; } if (newPassword) user.password = await bcrypt.hash(newPassword, 10); if (profilePic !== undefined) user.profilePic = profilePic; if (description !== undefined) user.description = description; if (isAnonymous !== undefined) user.isAnonymous = isAnonymous; await user.save(); res.json({ message: 'Profile updated!', user }); } catch (err) { res.status(500).json({ error: 'Server Error' }); } });
-app.get('/leaderboard', async (req, res) => { try { res.json(await User.find({}, 'username rank profilePic').sort({ rank: -1 }).limit(10)); } catch (err) { res.status(500).json({ error: 'Server Error' }); } });
+app.get('/leaderboard', async (req, res) => { try { res.json(await User.find({}, 'username rank bucks profilePic').sort({ rank: -1 }).limit(10)); } catch (err) { res.status(500).json({ error: 'Server Error' }); } });
 
-// SHOP API ROUTES
 app.post('/shop/buy', async (req, res) => {
     try {
         const { username, itemId, cost } = req.body;
@@ -51,11 +50,7 @@ app.post('/shop/equip', async (req, res) => {
         const { username, type, itemId } = req.body;
         const user = await User.findOne({ username });
         if (!user) return res.status(404).json({ error: 'User not found' });
-        
-        if (itemId !== 'none' && !user.inventory.includes(itemId)) {
-            return res.status(400).json({ error: 'You do not own this item.' });
-        }
-
+        if (itemId !== 'none' && !user.inventory.includes(itemId)) return res.status(400).json({ error: 'You do not own this item.' });
         user.equipped[type] = itemId;
         user.markModified('equipped'); 
         await user.save();
@@ -75,7 +70,8 @@ async function handleGameEnd(roomName, winnerId, loserId, isQuit = false) {
             const winnerUser = await User.findOne({ username: game.playerUsernames[winnerId] }); const loserUser = await User.findOne({ username: game.playerUsernames[loserId] }); 
             if (winnerUser) { 
                 winnerUser.rank = (Number(winnerUser.rank) ?? 100) + pointsWon; 
-                winnerUser.bucks = (Number(winnerUser.bucks) ?? 0) + 5; 
+                // WINNER GETS 5 BUCKS + THE ENTIRE WAGER POOL!
+                winnerUser.bucks = (Number(winnerUser.bucks) ?? 0) + 5 + (game.pool || 0); 
                 await winnerUser.save(); 
                 newWinnerRank = winnerUser.rank; 
                 newWinnerBucks = winnerUser.bucks;
@@ -95,18 +91,22 @@ async function handleGameEnd(roomName, winnerId, loserId, isQuit = false) {
         if (loserData?.isAnon) loserData = { username: 'Anonymous', pfp: 'https://api.dicebear.com/7.x/identicon/svg?seed=Anon', equipped: { border: 'none', banner: 'none', piece: 'none' } }; 
     }
     
-    io.to(roomName).emit('gameOverScreen', { winnerId, loserId, isQuit, isTie: !winnerId && !loserId, newWinnerRank, newLoserRank, newWinnerBucks, winnerData, loserData, pointsWon, pointsLost, rummyScores: game.rummyScores }); 
+    // Pass the pool winnings string so we can display it on the game over screen
+    const poolWinnings = game.pool && !isQuit && winnerId ? game.pool : 0;
+    io.to(roomName).emit('gameOverScreen', { winnerId, loserId, isQuit, isTie: !winnerId && !loserId, newWinnerRank, newLoserRank, newWinnerBucks, winnerData, loserData, pointsWon, pointsLost, rummyScores: game.rummyScores, poolWinnings }); 
     delete activeGames[roomName]; 
 }
 
 async function initializeGame(roomName, chosenGame, player1, player2, privateCode = null) {
-    activeGames[roomName] = { roomName, gameType: chosenGame, playerUsernames: { [player1.id]: player1.username, [player2.id]: player2.username }, winner: null }; 
+    // ADDED: pool and pendingAllocation
+    activeGames[roomName] = { roomName, gameType: chosenGame, playerUsernames: { [player1.id]: player1.username, [player2.id]: player2.username }, winner: null, pool: 0, pendingAllocation: 0 }; 
     io.to(roomName).emit('matchFound', { message: 'Match starting!', game: chosenGame });
     let u1 = null, u2 = null; try { u1 = await User.findOne({ username: player1.username }); u2 = await User.findOne({ username: player2.username }); } catch (e) { }
 
+    // ADDED: bucks to the playerData object
     const getPlayerData = (user, fallbackName) => { 
-        if (!privateCode && user?.isAnonymous) return { username: 'Anonymous', rank: '???', pfp: 'https://api.dicebear.com/7.x/identicon/svg?seed=Anon', equipped: { border: 'none', banner: 'none', piece: 'none' } }; 
-        return { username: user?.username || fallbackName, rank: user?.rank ?? 100, pfp: user?.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${fallbackName}`, equipped: user?.equipped || { border: 'none', banner: 'none', piece: 'none' } }; 
+        if (!privateCode && user?.isAnonymous) return { username: 'Anonymous', rank: '???', bucks: 0, pfp: 'https://api.dicebear.com/7.x/identicon/svg?seed=Anon', equipped: { border: 'none', banner: 'none', piece: 'none' } }; 
+        return { username: user?.username || fallbackName, rank: user?.rank ?? 100, bucks: user?.bucks ?? 0, pfp: user?.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${fallbackName}`, equipped: user?.equipped || { border: 'none', banner: 'none', piece: 'none' } }; 
     };
     const p1Data = getPlayerData(u1, player1.username); const p2Data = getPlayerData(u2, player2.username);
 
@@ -129,10 +129,7 @@ async function initializeGame(roomName, chosenGame, player1, player2, privateCod
             game.deck = []; 
             suits.forEach(s => values.forEach(v => game.deck.push({suit: s, val: v}))); 
             game.deck.sort(() => Math.random() - 0.5); 
-            game.hands = { 
-                [player1.id]: game.deck.splice(0, 3), 
-                [player2.id]: game.deck.splice(0, 3) 
-            }; 
+            game.hands = { [player1.id]: game.deck.splice(0, 3), [player2.id]: game.deck.splice(0, 3) }; 
             game.discardPile = [game.deck.pop()]; 
             safeGameState.players = game.players; 
             safeGameState.turn = game.turn; 
@@ -183,6 +180,51 @@ io.on('connection', (socket) => {
             let chosenGame = gameSelection === 'Random' ? ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Mini Chess', 'Crazy Eights', 'Rummy', 'Endless Tic-Tac-Toe'][Math.floor(Math.random() * 8)] : gameSelection; 
             initializeGame(roomName, chosenGame, player1, player2, code); 
         } 
+    });
+
+    // NEW: IN-GAME CHAT & WAGER SYSTEM
+    socket.on('sendInGameChat', ({ roomName, message, username }) => {
+        io.to(roomName).emit('receiveInGameChat', { username, message });
+    });
+
+    socket.on('requestAllocation', ({ roomName, amount }) => {
+        const game = activeGames[roomName];
+        if (game) {
+            game.pendingAllocation = amount;
+            const opponentId = Object.keys(game.players).find(id => id !== socket.id);
+            io.to(opponentId).emit('allocationRequested', amount);
+        }
+    });
+
+    socket.on('respondAllocation', async ({ roomName, accept }) => {
+        const game = activeGames[roomName];
+        if (!game) return;
+        
+        if (accept) {
+            try {
+                const p1Id = Object.keys(game.players)[0];
+                const p2Id = Object.keys(game.players)[1];
+                const u1 = await User.findOne({ username: game.playerUsernames[p1Id] });
+                const u2 = await User.findOne({ username: game.playerUsernames[p2Id] });
+                
+                // Deduct the bucks securely on the backend
+                if (u1 && u2 && u1.bucks >= game.pendingAllocation && u2.bucks >= game.pendingAllocation) {
+                    u1.bucks -= game.pendingAllocation;
+                    u2.bucks -= game.pendingAllocation;
+                    await u1.save();
+                    await u2.save();
+                    
+                    game.pool += (game.pendingAllocation * 2);
+                    io.to(roomName).emit('allocationAccepted', { newPool: game.pool, amountAdded: game.pendingAllocation });
+                } else {
+                    io.to(roomName).emit('allocationDenied'); 
+                }
+            } catch(e) { console.error(e); }
+        } else {
+            const opponentId = Object.keys(game.players).find(id => id !== socket.id);
+            io.to(opponentId).emit('allocationDenied');
+        }
+        game.pendingAllocation = 0; // Reset pending request
     });
 
     socket.on('makeMove', ({ roomName, macroIndex, microIndex }) => { const game = activeGames[roomName]; if (game && game.gameType === 'Super Tic-Tac-Toe') { stttLogic.handleMove(game, socket.id, macroIndex, microIndex); io.to(roomName).emit('updateBoard', game); if (game.winner) { setTimeout(() => { handleGameEnd(roomName, game.winner === 'Tie' ? null : Object.keys(game.players).find(id => game.players[id] === game.winner), game.winner === 'Tie' ? null : Object.keys(game.players).find(id => game.players[id] !== game.winner), false); }, 2500); } } });
