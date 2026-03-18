@@ -16,8 +16,8 @@ const mcContainer = document.getElementById('mc-container'); const mcBoard = doc
 let mcSelected = null; let lastChessGame = null;
 const chessIcons = { 1: '♚\uFE0E', 2: '♛\uFE0E', 3: '♝\uFE0E', 4: '♜\uFE0E', 5: '♟\uFE0E' };
 
-// COSMETIC HELPERS
-const COLOR_MAP = { red: '#ff4757', orange: '#ffa502', yellow: '#eccc68', green: '#2ed573', blue: '#1e90ff', purple: '#a29bfe', none: null };
+// UPDATED: Vibrant colors to match the shop!
+const COLOR_MAP = { red: '#ff003c', orange: '#ff8800', yellow: '#ffcc00', green: '#00e640', blue: '#0088ff', purple: '#b000ff', none: null };
 window.p1Color = 'var(--primary)'; window.p2Color = 'var(--secondary)';
 
 function getChessPlayerClient(piece) { if (piece >= 11 && piece <= 15) return 'Player 1'; if (piece >= 21 && piece <= 25) return 'Player 2'; return null; }
@@ -75,7 +75,6 @@ function stopTurnTimer() {
     if (timerEl) timerEl.style.display = 'none';
 }
 
-
 socket.on('onlineCount', (count) => { document.getElementById('online-counter').innerText = `🟢 Players Online: ${count}`; });
 window.onload = () => { const savedUser = localStorage.getItem('boarders_account'); if (savedUser) { const { username, password } = JSON.parse(savedUser); usernameInput.value = username; passwordInput.value = password; handleAuth('login'); } };
 
@@ -97,7 +96,8 @@ function updateDashboardUI() {
     const bannerEq = myUserObj.equipped?.banner?.replace('banner_', '') || 'none';
     
     dashPfp.style.borderColor = COLOR_MAP[borderEq] || 'white';
-    document.querySelector('.dash-profile-top').style.background = COLOR_MAP[bannerEq] ? `${COLOR_MAP[bannerEq]}40` : 'rgba(255,255,255,0.5)'; 
+    // UPDATED: Increased transparency from 40 to 80 so it's much brighter!
+    document.querySelector('.dash-profile-top').style.background = COLOR_MAP[bannerEq] ? `${COLOR_MAP[bannerEq]}80` : 'rgba(255,255,255,0.5)'; 
 
     document.getElementById('playerDescDisplay').innerText = `"${myUserObj.description}"`;
 }
@@ -197,6 +197,12 @@ socket.on('startGame', (gameState) => {
     window.p1Color = COLOR_MAP[p1Data.equipped?.piece?.replace('piece_', '')] || 'var(--primary)';
     window.p2Color = COLOR_MAP[p2Data.equipped?.piece?.replace('piece_', '')] || 'var(--secondary)';
     
+    // NEW: Anti-Confusion Fallback. If both have the same color piece, default to red and blue!
+    if (window.p1Color === window.p2Color) {
+        window.p1Color = 'var(--primary)';
+        window.p2Color = 'var(--secondary)';
+    }
+    
     const p1Border = COLOR_MAP[p1Data.equipped?.border?.replace('border_', '')] || 'var(--primary)';
     const p2Border = COLOR_MAP[p2Data.equipped?.border?.replace('border_', '')] || 'var(--secondary)';
     const p1Banner = COLOR_MAP[p1Data.equipped?.banner?.replace('banner_', '')] || '#f1f2f6';
@@ -204,8 +210,9 @@ socket.on('startGame', (gameState) => {
 
     document.getElementById('p1-pfp').style.borderColor = p1Border;
     document.getElementById('p2-pfp').style.borderColor = p2Border;
-    document.getElementById('p1-info').style.background = p1Banner === '#f1f2f6' ? p1Banner : `${p1Banner}40`;
-    document.getElementById('p2-info').style.background = p2Banner === '#f1f2f6' ? p2Banner : `${p2Banner}40`;
+    // UPDATED: Opacity up to 80 for brighter banners!
+    document.getElementById('p1-info').style.background = p1Banner === '#f1f2f6' ? p1Banner : `${p1Banner}80`;
+    document.getElementById('p2-info').style.background = p2Banner === '#f1f2f6' ? p2Banner : `${p2Banner}80`;
 
     document.getElementById('p1-name').innerText = p1Data.username; document.getElementById('p1-rank').innerText = `${p1Data.rank}⭐`; document.getElementById('p1-pfp').src = p1Data.pfp;
     document.getElementById('p2-name').innerText = p2Data.username; document.getElementById('p2-rank').innerText = `${p2Data.rank}⭐`; document.getElementById('p2-pfp').src = p2Data.pfp;

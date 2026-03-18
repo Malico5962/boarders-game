@@ -1,11 +1,11 @@
 // public/shop.js
 
+// UPDATED: Much more vibrant/neon hex codes!
 const catalogColors = {
-    red: '#ff4757', orange: '#ffa502', yellow: '#eccc68',
-    green: '#2ed573', blue: '#1e90ff', purple: '#a29bfe'
+    red: '#ff003c', orange: '#ff8800', yellow: '#ffcc00',
+    green: '#00e640', blue: '#0088ff', purple: '#b000ff'
 };
 
-// Generate the catalog dynamically based on your variants
 const SHOP_CATALOG = [];
 const variants = ['red', 'orange', 'yellow', 'green', 'blue', 'purple'];
 
@@ -26,8 +26,8 @@ async function handleBuyItem(itemId, cost) {
     if (res.ok) {
         myUserObj = data.user;
         updateDashboardUI();
-        renderShop(); // Refresh shop to show "Owned"
-        renderLocker(); // Update locker inventory
+        renderShop(); 
+        renderLocker(); 
     } else {
         alert(data.error);
     }
@@ -42,8 +42,8 @@ async function handleEquipItem(type, itemId) {
     const data = await res.json();
     if (res.ok) {
         myUserObj = data.user;
-        renderLocker(); // Refresh locker to show "Equipped"
-        updateDashboardUI(); // Apply visually to dashboard
+        renderLocker(); 
+        updateDashboardUI(); 
     }
 }
 
@@ -96,7 +96,6 @@ function renderLocker() {
     ['border', 'banner', 'piece'].forEach(type => {
         html += `<h3 style="text-transform: capitalize; border-bottom: 2px solid #f1f2f6; padding-bottom: 5px;">${type}s</h3>`;
         
-        // Always give the option to unequip
         const currentlyEquipped = myUserObj.equipped ? myUserObj.equipped[type] : 'none';
         html += `
             <div style="display: flex; justify-content: space-between; align-items: center; background: #f1f2f6; padding: 10px 15px; border-radius: 15px; margin-bottom: 10px;">
@@ -136,7 +135,6 @@ function renderLocker() {
     document.getElementById('closeLockerBtn-inner').onclick = () => document.getElementById('locker-modal').style.display = 'none';
 }
 
-// Make these available globally so app.js can call them when buttons are clicked
 window.renderShop = renderShop;
 window.renderLocker = renderLocker;
 window.SHOP_CATALOG = SHOP_CATALOG;
