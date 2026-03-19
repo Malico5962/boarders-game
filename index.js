@@ -10,7 +10,19 @@ app.use(express.json()); app.use(express.static(path.join(__dirname, 'public')))
 
 mongoose.connect(process.env.MONGO_URI).then(() => console.log('✅ Connected to MongoDB permanently!')).catch(err => console.error('❌ MongoDB Connection Error:', err));
 
-const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } });
+const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: { 
+        user: process.env.EMAIL_USER, 
+        pass: process.env.EMAIL_PASS 
+    },
+    tls: {
+        // This tells the cloud host not to block the secure proxy handshake
+        rejectUnauthorized: false
+    }
+});
 
 const defaultInventory = ['piece_red', 'piece_blue', 'cardBack_red'];
 const defaultEquipped = { border: 'none', banner: 'none', piece: { primary: 'piece_red', secondary: 'piece_blue' }, cardBack: 'cardBack_red', emoji: 'none', winAnim: 'none' };
