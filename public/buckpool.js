@@ -51,6 +51,7 @@ let isMenuOpen = false;
 let pendingRequestAmount = 0;
 
 document.getElementById('toggleSideMenuBtn').addEventListener('click', () => {
+    if(window.sfx) window.sfx.click();
     isMenuOpen = !isMenuOpen;
     document.getElementById('gameSideMenu').style.right = isMenuOpen ? '0px' : '-400px';
 });
@@ -73,6 +74,7 @@ window.populateEmojis = function() {
         btn.style.cssText = 'font-size: 1.5rem; padding: 5px; margin: 0; background: #f1f2f6; box-shadow: 0 4px 0 #dfe6e9; border-radius: 10px; cursor: pointer; transition: transform 0.1s;';
         btn.onclick = () => {
             if (window.currentRoom && window.socket) {
+                if(window.sfx) window.sfx.click();
                 window.socket.emit('sendEmoji', { roomName: window.currentRoom, emoji: em.icon });
                 btn.disabled = true;
                 setTimeout(() => { btn.disabled = false; }, 2000);
@@ -83,9 +85,7 @@ window.populateEmojis = function() {
 };
 
 window.initBuckPool = function(myBucks, oppBucks) {
-    currentPool = 0;
-    myCurrentBucks = myBucks;
-    oppCurrentBucks = oppBucks;
+    currentPool = 0; myCurrentBucks = myBucks; oppCurrentBucks = oppBucks;
     maxAllocation = Math.min(myBucks, oppBucks, 100);
     
     document.getElementById('myBucksDisplay').innerText = myCurrentBucks;
@@ -104,8 +104,8 @@ window.hideBuckPool = function() {
     document.getElementById('toggleSideMenuBtn').style.display = 'none';
 };
 
-// Listeners securely linked to global windows
 document.getElementById('requestAllocateBtn').addEventListener('click', () => {
+    if(window.sfx) window.sfx.click();
     const amt = parseInt(document.getElementById('allocateInput').value);
     if (isNaN(amt) || amt <= 0 || !window.socket || !window.currentRoom) return;
     if (amt > maxAllocation) { document.getElementById('allocateStatus').innerText = `Limit is ${maxAllocation} Bucks!`; return; }
@@ -116,16 +116,19 @@ document.getElementById('requestAllocateBtn').addEventListener('click', () => {
 });
 
 document.getElementById('acceptAllocateBtn').addEventListener('click', () => {
+    if(window.sfx) window.sfx.click();
     document.getElementById('allocation-request-modal').style.display = 'none';
     if(window.socket && window.currentRoom) window.socket.emit('respondAllocation', { roomName: window.currentRoom, accept: true, amount: pendingRequestAmount });
 });
 
 document.getElementById('denyAllocateBtn').addEventListener('click', () => {
+    if(window.sfx) window.sfx.click();
     document.getElementById('allocation-request-modal').style.display = 'none';
     if(window.socket && window.currentRoom) window.socket.emit('respondAllocation', { roomName: window.currentRoom, accept: false });
 });
 
 document.getElementById('sendInGameChatBtn').addEventListener('click', () => {
+    if(window.sfx) window.sfx.click();
     const msg = document.getElementById('inGameChatInput').value;
     if (msg && window.currentRoom && window.socket) {
         window.socket.emit('sendInGameChat', { roomName: window.currentRoom, message: msg, username: window.myUsername });
@@ -137,9 +140,9 @@ document.getElementById('inGameChatInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') document.getElementById('sendInGameChatBtn').click();
 });
 
-// We wrap the socket receivers in a function called by app.js so we guarantee the connection is alive!
 window.initBuckPoolSocket = function(globalSocket) {
     globalSocket.on('allocationRequested', (amount) => {
+        if(window.sfx) window.sfx.chime();
         pendingRequestAmount = amount;
         document.getElementById('requestAmountDisplay').innerText = amount;
         document.getElementById('allocation-request-modal').style.display = 'flex';
@@ -151,6 +154,7 @@ window.initBuckPoolSocket = function(globalSocket) {
     });
 
     globalSocket.on('allocationAccepted', (data) => {
+        if(window.sfx) window.sfx.chime();
         currentPool = data.newPool;
         myCurrentBucks -= data.amountAdded;
         oppCurrentBucks -= data.amountAdded;
@@ -164,6 +168,7 @@ window.initBuckPoolSocket = function(globalSocket) {
     });
 
     globalSocket.on('receiveInGameChat', (data) => {
+        if(data.username !== window.myUsername && window.sfx && isMenuOpen) window.sfx.chime();
         const chatBox = document.getElementById('inGameChatBox');
         chatBox.innerHTML += `<div style="margin: 5px 0;"><strong style="color: ${data.username === window.myUsername ? 'var(--primary)' : 'var(--secondary)'};">${data.username}:</strong> ${data.message}</div>`;
         chatBox.scrollTop = chatBox.scrollHeight;

@@ -21,7 +21,6 @@ const catalogColors = {
     green: '#00e640', blue: '#0088ff', purple: '#b000ff'
 };
 
-// These are hidden from the store, but appear as owned in the Locker
 const defaultItemIds = ['piece_red', 'piece_blue', 'cardBack_red'];
 
 const SHOP_CATALOG = [];
@@ -56,6 +55,7 @@ let currentShopTab = 'border';
 let currentLockerTab = 'border';
 
 async function handleBuyItem(itemId, cost) {
+    if (window.sfx) window.sfx.click(); // Sound!
     if (!myUserObj) return;
     const res = await fetch('/shop/buy', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -63,6 +63,7 @@ async function handleBuyItem(itemId, cost) {
     });
     const data = await res.json();
     if (res.ok) {
+        if (window.sfx) window.sfx.chime(); // Purchase success sound!
         myUserObj = data.user;
         updateDashboardUI();
         renderShop(); 
@@ -71,6 +72,7 @@ async function handleBuyItem(itemId, cost) {
 }
 
 async function handleEquipItem(type, slot, itemId) {
+    if (window.sfx) window.sfx.click(); // Sound!
     if (!myUserObj) return;
     const res = await fetch('/shop/equip', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -84,8 +86,14 @@ async function handleEquipItem(type, slot, itemId) {
     } else { alert(data.error); }
 }
 
-window.changeShopTab = function(type) { currentShopTab = type; renderShop(); };
-window.changeLockerTab = function(type) { currentLockerTab = type; renderLocker(); };
+window.changeShopTab = function(type) { 
+    if (window.sfx) window.sfx.click(); // Sound!
+    currentShopTab = type; renderShop(); 
+};
+window.changeLockerTab = function(type) { 
+    if (window.sfx) window.sfx.click(); // Sound!
+    currentLockerTab = type; renderLocker(); 
+};
 
 function buildSidebar(currentTab, clickFunc) {
     const tabs = [
@@ -147,7 +155,10 @@ function renderShop() {
              </div></div>`;
     
     container.innerHTML = html;
-    document.getElementById('closeShopBtn-inner').onclick = () => document.getElementById('shop-modal').style.display = 'none';
+    document.getElementById('closeShopBtn-inner').onclick = () => { 
+        if (window.sfx) window.sfx.click(); // Sound!
+        document.getElementById('shop-modal').style.display = 'none'; 
+    };
 }
 
 function renderLocker() {
@@ -169,7 +180,6 @@ function renderLocker() {
         const primaryEq = isPiece ? (myUserObj.equipped?.piece?.primary || 'piece_red') : currentlyEquipped;
         const secondaryEq = isPiece ? (myUserObj.equipped?.piece?.secondary || 'piece_blue') : 'none';
 
-        // UPDATED: Hide the "None" option if it's Piece or CardBack!
         if (currentLockerTab !== 'piece' && currentLockerTab !== 'cardBack') {
             html += `
                 <div style="display: flex; justify-content: space-between; align-items: center; background: #f1f2f6; padding: 15px 20px; border-radius: 15px; margin-bottom: 12px;">
@@ -222,7 +232,10 @@ function renderLocker() {
              </div></div>`;
     
     container.innerHTML = html;
-    document.getElementById('closeLockerBtn-inner').onclick = () => document.getElementById('locker-modal').style.display = 'none';
+    document.getElementById('closeLockerBtn-inner').onclick = () => {
+        if (window.sfx) window.sfx.click(); // Sound!
+        document.getElementById('locker-modal').style.display = 'none'; 
+    };
 }
 
 window.renderShop = renderShop;
