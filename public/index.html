@@ -177,6 +177,8 @@
         
         <button id="openFeedbackBtn" style="width: 100%; background: #e84393; color: white; box-shadow: 0 8px 0 #d63031; font-size: 1rem; padding: 15px 5px; margin-top: 10px;">📮 Send Feedback</button>
         
+        <button id="adminPanelBtn" style="display:none; width: 100%; background: #2d3436; color: white; box-shadow: 0 8px 0 #1e272e; font-size: 1rem; padding: 15px 5px; margin-top: 10px;">🛠️ Admin Panel</button>
+
         <button id="logoutBtn" style="width: 100%; background: #ced6e0; color: var(--text); box-shadow: 0 8px 0 #a4b0be; font-size: 1rem; padding: 15px 5px; margin-top: 10px;">Logout</button>
         <div id="status" style="margin-top: 20px; font-weight: 900; color: #2d3436; font-size: 1.2rem;">Ready to play?</div>
     </div>
@@ -194,9 +196,7 @@
         <div id="ttt-container"><div id="ttt-board"></div></div>
         <div id="c4-container"><div id="c4-board"></div></div>
         <div id="dab-container"><h3 style="margin-top:0; font-size: 2rem;">🔴 <span id="dab-score-red">0</span> &nbsp;-&nbsp; <span id="dab-score-blue">0</span> 🔵</h3><div id="dab-board"></div></div>
-        
         <div id="mc-container"><div id="mc-board"></div></div> 
-
         <div id="bs-container">
             <div class="bs-grid-wrapper">
                 <div><div class="bs-board-title">Your Fleet</div><div id="bs-my-board" class="bs-board"></div></div>
@@ -208,23 +208,15 @@
                 <button id="bs-ready-btn">✅ Ready!</button>
             </div>
         </div>
-
         <div id="c8-container">
             <div><h3 style="margin:0; color:white; text-shadow:0 2px 4px rgba(0,0,0,0.3);">Opponent: <span id="c8-opp-count">7</span> Cards</h3><div id="c8-opp-hand" class="c8-hand"></div></div>
             <div class="c8-table"><div id="c8-deck" class="c8-card c8-hidden"></div><div id="c8-discard" class="c8-card"></div><div id="c8-active-suit" style="font-size: 4rem; font-weight: 900; margin-left: 20px; text-shadow: 0 5px 15px rgba(0,0,0,0.2);"></div></div>
             <div><h3 style="margin:0; color:white; text-shadow:0 2px 4px rgba(0,0,0,0.3);">Your Hand</h3><div id="c8-my-hand" class="c8-hand"></div></div>
         </div>
-
         <div id="rm-container">
-            <div>
-                <h3 style="margin:0; color:white; text-shadow:0 2px 4px rgba(0,0,0,0.3);">Opponent: <span id="rm-opp-count">10</span> Cards</h3>
-                <div id="rm-opp-hand" class="rm-hand"></div>
-            </div>
+            <div><h3 style="margin:0; color:white; text-shadow:0 2px 4px rgba(0,0,0,0.3);">Opponent: <span id="rm-opp-count">10</span> Cards</h3><div id="rm-opp-hand" class="rm-hand"></div></div>
             <div class="rm-table">
-                <div class="rm-piles">
-                    <div id="rm-deck" class="rm-card rm-hidden rm-deck"></div>
-                    <div id="rm-discard-pile" class="rm-discard-pile"></div>
-                </div>
+                <div class="rm-piles"><div id="rm-deck" class="rm-card rm-hidden rm-deck"></div><div id="rm-discard-pile" class="rm-discard-pile"></div></div>
                 <div id="rm-meld-area" class="rm-meld-area"></div>
             </div>
             <div class="rm-actions">
@@ -232,10 +224,7 @@
                 <button id="rm-layoff-btn" class="rm-btn">➕ Lay Off</button>
                 <button id="rm-discard-btn" class="rm-btn">🗑️ Discard</button>
             </div>
-            <div style="width: 100%;">
-                <h3 style="margin:0; color:white; text-shadow:0 2px 4px rgba(0,0,0,0.3);">Your Hand</h3>
-                <div id="rm-my-hand" class="rm-hand"></div>
-            </div>
+            <div style="width: 100%;"><h3 style="margin:0; color:white; text-shadow:0 2px 4px rgba(0,0,0,0.3);">Your Hand</h3><div id="rm-my-hand" class="rm-hand"></div></div>
         </div>
     </div>
 
@@ -253,6 +242,18 @@
                 <button id="submitFeedbackBtn" style="width: 100%; background: #2ed573; box-shadow: 0 8px 0 #27ae60; margin-top: 10px;">Send Feedback</button>
             </div>
             <button id="closeFeedbackBtn" style="width:100%; margin-top: 20px; background: #ced6e0; color: var(--text); box-shadow: 0 8px 0 #a4b0be;">Cancel</button>
+        </div>
+    </div>
+
+    <div id="admin-modal" class="modal-overlay">
+        <div class="modal-content" style="width: 600px; max-width: 90vw;">
+            <h2 style="font-size: 2.5rem; margin-top:0;">Admin Panel 🛠️</h2>
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                <button id="tab-bugs" style="flex:1; margin:0; background:var(--primary); box-shadow:0 4px 0 var(--primary-dark);">🐛 Bugs</button>
+                <button id="tab-suggs" style="flex:1; margin:0; background:#ced6e0; color:var(--text); box-shadow:0 4px 0 #a4b0be;">💡 Suggestions</button>
+            </div>
+            <div id="admin-feedback-list" style="text-align: left; max-height: 50vh; overflow-y: auto; padding-right: 10px;"></div>
+            <button id="closeAdminBtn" style="width:100%; margin-top: 20px; background: #ced6e0; color: var(--text); box-shadow: 0 8px 0 #a4b0be;">Close Panel</button>
         </div>
     </div>
     

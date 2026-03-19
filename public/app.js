@@ -1,27 +1,9 @@
-// public/app.js
 const socket = window.socket = io();
 
-// --- PURE CODE ARCADE SYNTHESIZER ---
 window.audioCtx = null;
 window.sfx = {
-    init: () => {
-        if (!window.audioCtx) window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (window.audioCtx.state === 'suspended') window.audioCtx.resume();
-    },
-    playTone: (freq, type, duration, vol=0.1) => {
-        if (!window.audioCtx) return;
-        const osc = window.audioCtx.createOscillator();
-        const gain = window.audioCtx.createGain();
-        osc.type = type;
-        if(Array.isArray(freq)) {
-            osc.frequency.setValueAtTime(freq[0], window.audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(freq[1], window.audioCtx.currentTime + duration);
-        } else { osc.frequency.setValueAtTime(freq, window.audioCtx.currentTime); }
-        gain.gain.setValueAtTime(vol, window.audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, window.audioCtx.currentTime + duration);
-        osc.connect(gain); gain.connect(window.audioCtx.destination);
-        osc.start(); osc.stop(window.audioCtx.currentTime + duration);
-    },
+    init: () => { if (!window.audioCtx) window.audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if (window.audioCtx.state === 'suspended') window.audioCtx.resume(); },
+    playTone: (freq, type, duration, vol=0.1) => { if (!window.audioCtx) return; const osc = window.audioCtx.createOscillator(); const gain = window.audioCtx.createGain(); osc.type = type; if(Array.isArray(freq)) { osc.frequency.setValueAtTime(freq[0], window.audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(freq[1], window.audioCtx.currentTime + duration); } else { osc.frequency.setValueAtTime(freq, window.audioCtx.currentTime); } gain.gain.setValueAtTime(vol, window.audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, window.audioCtx.currentTime + duration); osc.connect(gain); gain.connect(window.audioCtx.destination); osc.start(); osc.stop(window.audioCtx.currentTime + duration); },
     pop: () => { window.sfx.init(); window.sfx.playTone([600, 100], 'sine', 0.1, 0.2); },
     click: () => { window.sfx.init(); window.sfx.playTone(800, 'triangle', 0.05, 0.05); },
     chime: () => { window.sfx.init(); window.sfx.playTone(900, 'sine', 0.2, 0.1); setTimeout(()=>window.sfx.playTone(1200, 'sine', 0.4, 0.1), 100); },
@@ -29,9 +11,8 @@ window.sfx = {
     lose: () => { window.sfx.init(); [400, 380, 360, 300].forEach((f, i) => setTimeout(() => window.sfx.playTone(f, 'sawtooth', 0.4, 0.1), i * 200)); },
     matchFound: () => { window.sfx.init(); [440, 880].forEach((f, i) => setTimeout(() => window.sfx.playTone(f, 'sine', 0.3, 0.1), i * 150)); }
 };
-document.addEventListener('click', () => { if(window.sfx) window.sfx.init(); }, {once: true}); // Unlock audio
+document.addEventListener('click', () => { if(window.sfx) window.sfx.init(); }, {once: true}); 
 
-// Hook up Buck Pool listeners
 if (window.initBuckPoolSocket) window.initBuckPoolSocket(socket);
 
 const animStyles = document.createElement('style');
@@ -82,11 +63,7 @@ window.resetTurnTimer = function() {
     if (window.localTimerInterval) clearInterval(window.localTimerInterval);
     window.localTimeLeft = 60;
     let timerEl = document.getElementById('turn-timer-display');
-    if (!timerEl) {
-        timerEl = document.createElement('div'); timerEl.id = 'turn-timer-display';
-        timerEl.style.fontSize = '1.4rem'; timerEl.style.fontWeight = '900'; timerEl.style.marginTop = '10px';
-        turnDisplay.parentNode.insertBefore(timerEl, turnDisplay.nextSibling);
-    }
+    if (!timerEl) { timerEl = document.createElement('div'); timerEl.id = 'turn-timer-display'; timerEl.style.fontSize = '1.4rem'; timerEl.style.fontWeight = '900'; timerEl.style.marginTop = '10px'; turnDisplay.parentNode.insertBefore(timerEl, turnDisplay.nextSibling); }
     timerEl.style.display = 'block'; timerEl.style.color = 'var(--text)'; timerEl.classList.remove('sttt-win-pulse');
     timerEl.innerText = `⏱️ ${window.localTimeLeft}s`;
     window.localTimerInterval = setInterval(() => {
@@ -124,6 +101,12 @@ window.updateDashboardUI = function() {
     dashPfp.style.borderColor = window.COLOR_MAP[borderEq] || 'white';
     document.querySelector('.dash-profile-top').style.background = window.COLOR_MAP[bannerEq] ? `${window.COLOR_MAP[bannerEq]}80` : 'rgba(255,255,255,0.5)'; 
     document.getElementById('playerDescDisplay').innerText = `"${window.myUserObj.description}"`;
+
+    if (window.myUsername === 'Admin') {
+        document.getElementById('adminPanelBtn').style.display = 'block';
+    } else {
+        document.getElementById('adminPanelBtn').style.display = 'none';
+    }
 }
 
 // UI Buttons
@@ -138,17 +121,80 @@ document.getElementById('setProfilePic').addEventListener('input', (e) => { docu
 document.getElementById('closeAccountBtn').addEventListener('click', () => document.getElementById('account-modal').style.display = 'none');
 document.getElementById('saveAccountBtn').addEventListener('click', async () => { const newUsername = document.getElementById('setUsername').value; const newPassword = document.getElementById('setPassword').value; let profilePic = document.getElementById('setProfilePic').value; if (!profilePic.trim()) profilePic = `https://api.dicebear.com/7.x/bottts/svg?seed=${newUsername || window.myUserObj.username}`; const res = await fetch('/update-profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentUsername: window.myUserObj.username, newUsername: newUsername || undefined, newPassword: newPassword || undefined, profilePic, description: document.getElementById('setDesc').value, isAnonymous: document.getElementById('setAnon').checked }) }); const data = await res.json(); if (res.ok) { window.myUserObj = data.user; window.myUsername = window.myUserObj.username; localStorage.setItem('boarders_account', JSON.stringify({ username: window.myUserObj.username, password: newPassword || JSON.parse(localStorage.getItem('boarders_account')).password })); window.updateDashboardUI(); document.getElementById('account-modal').style.display = 'none'; } else { document.getElementById('account-error').innerText = data.error; } });
 
+// FEEDBACK LOGIC (DATABASE ROUTE)
 let currentFeedbackType = '';
 document.getElementById('openFeedbackBtn').addEventListener('click', () => { document.getElementById('feedback-step-1').style.display = 'block'; document.getElementById('feedback-step-2').style.display = 'none'; document.getElementById('feedback-text').value = ''; document.getElementById('feedback-modal').style.display = 'flex'; });
 document.getElementById('closeFeedbackBtn').addEventListener('click', () => { document.getElementById('feedback-modal').style.display = 'none'; });
 document.getElementById('btn-bug-report').addEventListener('click', () => { currentFeedbackType = 'Bug Report'; document.getElementById('feedback-type-title').innerText = '🐛 Report a Bug'; document.getElementById('feedback-step-1').style.display = 'none'; document.getElementById('feedback-step-2').style.display = 'block'; });
 document.getElementById('btn-suggestion').addEventListener('click', () => { currentFeedbackType = 'Suggestion'; document.getElementById('feedback-type-title').innerText = '💡 Make a Suggestion'; document.getElementById('feedback-step-1').style.display = 'none'; document.getElementById('feedback-step-2').style.display = 'block'; });
+
 document.getElementById('submitFeedbackBtn').addEventListener('click', async () => {
     const msg = document.getElementById('feedback-text').value; if (!msg.trim()) return alert('Please enter a message.');
     const btn = document.getElementById('submitFeedbackBtn'); btn.innerText = 'Sending...'; btn.disabled = true;
-    try { const res = await fetch('/send-feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: window.myUsername, type: currentFeedbackType, message: msg }) }); const data = await res.json(); if (res.ok) { alert(data.message); document.getElementById('feedback-modal').style.display = 'none'; } else { alert(data.error); } } catch (err) { alert('Failed to send feedback.'); }
+    try { 
+        const res = await fetch('/send-feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: window.myUsername, type: currentFeedbackType, message: msg }) }); 
+        const data = await res.json(); 
+        if (res.ok) { alert(data.message); document.getElementById('feedback-modal').style.display = 'none'; } else { alert(data.error); } 
+    } catch (err) { alert('Failed to send feedback.'); }
     btn.innerText = 'Send Feedback'; btn.disabled = false;
 });
+
+// ADMIN PANEL LOGIC
+let adminCurrentTab = 'Bug Report';
+
+document.getElementById('adminPanelBtn').addEventListener('click', () => {
+    document.getElementById('admin-modal').style.display = 'flex';
+    loadAdminFeedback();
+});
+document.getElementById('closeAdminBtn').addEventListener('click', () => {
+    document.getElementById('admin-modal').style.display = 'none';
+});
+
+document.getElementById('tab-bugs').addEventListener('click', () => {
+    adminCurrentTab = 'Bug Report';
+    document.getElementById('tab-bugs').style.background = 'var(--primary)'; document.getElementById('tab-bugs').style.boxShadow = '0 4px 0 var(--primary-dark)'; document.getElementById('tab-bugs').style.color = 'white';
+    document.getElementById('tab-suggs').style.background = '#ced6e0'; document.getElementById('tab-suggs').style.boxShadow = '0 4px 0 #a4b0be'; document.getElementById('tab-suggs').style.color = 'var(--text)';
+    loadAdminFeedback();
+});
+document.getElementById('tab-suggs').addEventListener('click', () => {
+    adminCurrentTab = 'Suggestion';
+    document.getElementById('tab-suggs').style.background = 'var(--secondary)'; document.getElementById('tab-suggs').style.boxShadow = '0 4px 0 var(--secondary-dark)'; document.getElementById('tab-suggs').style.color = 'white';
+    document.getElementById('tab-bugs').style.background = '#ced6e0'; document.getElementById('tab-bugs').style.boxShadow = '0 4px 0 #a4b0be'; document.getElementById('tab-bugs').style.color = 'var(--text)';
+    loadAdminFeedback();
+});
+
+async function loadAdminFeedback() {
+    const list = document.getElementById('admin-feedback-list');
+    list.innerHTML = '<p>Loading...</p>';
+    try {
+        const res = await fetch(`/admin/feedback?username=${window.myUsername}`);
+        const data = await res.json();
+        if(!res.ok) return list.innerHTML = `<p>${data.error}</p>`;
+        
+        const filtered = data.filter(f => f.type === adminCurrentTab);
+        if(filtered.length === 0) {
+            list.innerHTML = '<p style="color:#a4b0be; font-style:italic;">No feedback in this category.</p>'; return;
+        }
+        
+        list.innerHTML = filtered.map(f => `
+            <div style="background: #f1f2f6; padding: 15px; border-radius: 15px; margin-bottom: 10px; position:relative; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
+                <strong style="color:var(--text); font-size:1.2rem;">${f.username}</strong>
+                <span style="font-size:0.8rem; color:#a4b0be; margin-left:10px;">${new Date(f.createdAt).toLocaleString()}</span>
+                <button onclick="deleteFeedback('${f._id}')" style="position:absolute; top:10px; right:10px; margin:0; padding:8px 15px; font-size:0.9rem; background:#ff4757; box-shadow:0 4px 0 #ff1e33;">Delete</button>
+                <p style="margin: 10px 0 0 0; white-space: pre-wrap; font-size: 1.1rem;">${f.message}</p>
+            </div>
+        `).join('');
+    } catch(e) { list.innerHTML = '<p>Failed to load.</p>'; }
+}
+
+window.deleteFeedback = async function(id) {
+    if(window.sfx) window.sfx.pop();
+    try {
+        await fetch(`/admin/feedback/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: window.myUsername }) });
+        loadAdminFeedback();
+    } catch(e) { alert('Delete failed'); }
+}
+
 
 document.getElementById('viewLeaderboardBtn').addEventListener('click', async () => { document.getElementById('leaderboard-modal').style.display = 'flex'; const res = await fetch('/leaderboard'); const data = await res.json(); document.getElementById('leaderboard-content').innerHTML = data.map((u, i) => `<div class="leaderboard-item"><div class="lb-left"><span style="font-weight: 900; margin-right: 15px; color: var(--secondary);">#${i+1}</span><img src="${u.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username}`}"><span>${u.username}</span></div><div><span style="color:var(--primary); margin-right: 10px;">${u.rank} ⭐</span><span style="color:#2ed573;">${u.bucks || 0} 💵</span></div></div>`).join(''); }); 
 document.getElementById('closeLeaderboardBtn').addEventListener('click', () => { document.getElementById('leaderboard-modal').style.display = 'none'; });
@@ -210,7 +256,6 @@ socket.on('startGame', (gameState) => {
 
     const p1Data = gameState.playerData[window.p1Id]; const p2Data = gameState.playerData[window.p2Id];
     
-    // SMART PIECE COLLISION RESOLVER
     const p1Eq = p1Data.equipped || {}; const p2Eq = p2Data.equipped || {};
     let p1Piece = p1Eq.piece?.primary || 'piece_red'; let p2Piece = p2Eq.piece?.primary || 'piece_red';
 
@@ -222,7 +267,6 @@ socket.on('startGame', (gameState) => {
     window.p1Color = window.COLOR_MAP[p1Piece.replace('piece_', '')] || 'var(--primary)';
     window.p2Color = window.COLOR_MAP[p2Piece.replace('piece_', '')] || 'var(--secondary)';
     
-    // EXTRACT CARD BACKS
     let p1CbId = p1Eq.cardBack || 'cardBack_red'; let p2CbId = p2Eq.cardBack || 'cardBack_red';
     const rawP1Cb = window.COLOR_MAP[p1CbId.replace('cardBack_', '')]; const rawP2Cb = window.COLOR_MAP[p2CbId.replace('cardBack_', '')];
     window.p1CardBack = rawP1Cb ? `repeating-linear-gradient(45deg, ${rawP1Cb}, ${rawP1Cb} 10px, #ffffff 10px, #ffffff 20px)` : '';
@@ -302,7 +346,7 @@ document.getElementById('rm-discard-btn').onclick = () => { if (window.currentGa
 socket.on('updateRummy', (data) => { if(window.sfx) window.sfx.pop(); if (data.turn === window.mySymbol) { turnDisplay.innerText = data.phase === 'draw' ? "📥 Your Turn - Draw a Card" : "🎯 Your Turn - Meld or Discard"; turnDisplay.style.color = data.phase === 'draw' ? "var(--accent)" : "var(--primary)"; } else { turnDisplay.innerText = "⏳ Opponent's Turn..."; turnDisplay.style.color = "var(--secondary)"; } const isMyPlayPhase = data.turn === window.mySymbol && data.phase === 'play'; document.getElementById('rm-meld-btn').disabled = !isMyPlayPhase; document.getElementById('rm-layoff-btn').disabled = !isMyPlayPhase; document.getElementById('rm-discard-btn').disabled = !isMyPlayPhase; document.getElementById('rm-opp-count').innerText = data.opponentHandCount; rmOppHand.innerHTML = ''; for(let i=0; i<data.opponentHandCount; i++) { rmOppHand.innerHTML += `<div class="rm-card rm-hidden" ${window.oppCardBack ? `style="background: ${window.oppCardBack} !important;"` : ''}></div>`; } if (window.myCardBack) document.getElementById('rm-deck').style.background = window.myCardBack; rmMyHand.innerHTML = ''; data.myHand.forEach((card, index) => { let colorClass = (card.suit === '♥' || card.suit === '♦') ? 'c8-red' : 'c8-black'; let cardDiv = document.createElement('div'); cardDiv.className = `rm-card ${colorClass} ${rummySelectedIndices.includes(index) ? 'selected' : ''}`; cardDiv.innerHTML = `<div>${card.val}</div><div>${card.suit}</div>`; cardDiv.onclick = () => { if (!isMyPlayPhase) return; if (rummySelectedIndices.includes(index)) { rummySelectedIndices = rummySelectedIndices.filter(i => i !== index); cardDiv.classList.remove('selected'); } else { rummySelectedIndices.push(index); cardDiv.classList.add('selected'); } }; rmMyHand.appendChild(cardDiv); }); rmDiscardPile.innerHTML = ''; data.discardPile.forEach((card, index) => { let colorClass = (card.suit === '♥' || card.suit === '♦') ? 'c8-red' : 'c8-black'; let cardDiv = document.createElement('div'); cardDiv.className = `rm-card rm-discard-card ${colorClass}`; cardDiv.style.left = `${index * 25}px`; cardDiv.innerHTML = `<div>${card.val}</div><div>${card.suit}</div>`; cardDiv.onclick = () => { if (data.turn === window.mySymbol && data.phase === 'draw') socket.emit('makeRummyDraw', { roomName: window.currentRoom, source: 'discard', index: index }); }; rmDiscardPile.appendChild(cardDiv); }); rmMeldArea.innerHTML = ''; data.melds.forEach(meld => { let meldDiv = document.createElement('div'); meldDiv.className = `rm-meld ${rummySelectedMeldId === meld.id ? 'selected' : ''}`; meld.cards.forEach(card => { let colorClass = (card.suit === '♥' || card.suit === '♦') ? 'c8-red' : 'c8-black'; meldDiv.innerHTML += `<div class="rm-card ${colorClass}"><div>${card.val}</div><div>${card.suit}</div></div>`; }); meldDiv.onclick = () => { if (!isMyPlayPhase) return; rummySelectedMeldId = meld.id; document.querySelectorAll('.rm-meld').forEach(m => m.classList.remove('selected')); meldDiv.classList.add('selected'); }; rmMeldArea.appendChild(meldDiv); }); window.resetTurnTimer(); });
 
 document.addEventListener('keydown', (e) => { 
-    if (e.key === 'Escape') { document.getElementById('howtoplay-modal').style.display = 'none'; document.getElementById('stats-modal').style.display = 'none'; document.getElementById('leaderboard-modal').style.display = 'none'; document.getElementById('private-menu-modal').style.display = 'none'; document.getElementById('host-modal').style.display = 'none'; document.getElementById('join-modal').style.display = 'none'; document.getElementById('account-modal').style.display = 'none'; document.getElementById('shop-modal').style.display = 'none'; document.getElementById('locker-modal').style.display = 'none'; document.getElementById('returnToResultsBtn').click(); }
+    if (e.key === 'Escape') { document.getElementById('howtoplay-modal').style.display = 'none'; document.getElementById('stats-modal').style.display = 'none'; document.getElementById('leaderboard-modal').style.display = 'none'; document.getElementById('private-menu-modal').style.display = 'none'; document.getElementById('host-modal').style.display = 'none'; document.getElementById('join-modal').style.display = 'none'; document.getElementById('account-modal').style.display = 'none'; document.getElementById('shop-modal').style.display = 'none'; document.getElementById('locker-modal').style.display = 'none'; document.getElementById('feedback-modal').style.display = 'none'; document.getElementById('admin-modal').style.display = 'none'; document.getElementById('returnToResultsBtn').click(); }
     if (e.key === 'Enter') { const active = document.activeElement; if (active === document.getElementById('chatInput')) document.getElementById('sendChatBtn').click(); else if (active === document.getElementById('hostCodeInput')) document.getElementById('confirmHostBtn').click(); else if (active === document.getElementById('joinCodeInput')) document.getElementById('confirmJoinBtn').click(); else if (active === document.getElementById('usernameInput') || active === document.getElementById('passwordInput')) document.getElementById('loginBtn').click(); }
 }); 
 

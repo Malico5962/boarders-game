@@ -1,6 +1,5 @@
 require('dotenv').config(); 
 const express = require('express'); const http = require('http'); const { Server } = require('socket.io'); const path = require('path'); const bcrypt = require('bcryptjs'); const mongoose = require('mongoose'); 
-const nodemailer = require('nodemailer'); 
 
 const stttLogic = require('./games/superTicTacToe'); const c4Logic = require('./games/connect4'); const dabLogic = require('./games/dotsAndBoxes'); const bsLogic = require('./games/battleship'); 
 const miniChessLogic = require('./games/miniChess'); const rankLogic = require('./games/rank'); const c8Logic = require('./games/crazyEights'); const rummyLogic = require('./games/rummy'); const tttLogic = require('./games/ticTacToe');
@@ -10,25 +9,16 @@ app.use(express.json()); app.use(express.static(path.join(__dirname, 'public')))
 
 mongoose.connect(process.env.MONGO_URI).then(() => console.log('✅ Connected to MongoDB permanently!')).catch(err => console.error('❌ MongoDB Connection Error:', err));
 
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: { 
-        user: process.env.EMAIL_USER, 
-        pass: process.env.EMAIL_PASS 
-    },
-    tls: {
-        // This tells the cloud host not to block the secure proxy handshake
-        rejectUnauthorized: false
-    }
-});
-
 const defaultInventory = ['piece_red', 'piece_blue', 'cardBack_red'];
 const defaultEquipped = { border: 'none', banner: 'none', piece: { primary: 'piece_red', secondary: 'piece_blue' }, cardBack: 'cardBack_red', emoji: 'none', winAnim: 'none' };
 
+// User Model
 const userSchema = new mongoose.Schema({ username: { type: String, required: true, unique: true }, password: { type: String, required: true }, rank: { type: Number, default: 100 }, bucks: { type: Number, default: 0 }, profilePic: { type: String, default: '' }, description: { type: String, default: 'I love Boarders!' }, isAnonymous: { type: Boolean, default: false }, inventory: { type: [String], default: defaultInventory }, equipped: { type: Object, default: defaultEquipped } });
 const User = mongoose.model('User', userSchema);
+
+// NEW: Feedback Model
+const feedbackSchema = new mongoose.Schema({ username: String, type: String, message: String, createdAt: { type: Date, default: Date.now } });
+const Feedback = mongoose.model('Feedback', feedbackSchema);
 
 let matchmakingQueue = []; const activeGames = {}; let onlinePlayersCount = 0; const privateRooms = {}; 
 
@@ -48,7 +38,6 @@ function startTurnTimer(roomName) {
 app.post('/register', async (req, res) => { 
     try { 
         const { username, password } = req.body; 
-        if (username.toLowerCase() === 'testing') return res.status(400).json({ error: 'Username reserved.' });
         if (await User.findOne({ username })) return res.status(400).json({ error: 'Username taken' }); 
         const hashedPassword = await bcrypt.hash(password, 10); const defaultPfp = `https://api.dicebear.com/7.x/bottts/svg?seed=${username}`; 
         const newUser = new User({ username, password: hashedPassword, rank: 100, bucks: 0, profilePic: defaultPfp, inventory: defaultInventory, equipped: defaultEquipped }); 
@@ -61,7 +50,10 @@ app.post('/login', async (req, res) => {
         const { username, password } = req.body; const user = await User.findOne({ username }); 
         if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Invalid credentials' }); 
         if (user.equipped && typeof user.equipped.piece === 'string') { user.equipped = { border: user.equipped.border || 'none', banner: user.equipped.banner || 'none', piece: { primary: user.equipped.piece || 'piece_red', secondary: 'piece_blue' }, cardBack: user.equipped.cardBack || 'cardBack_red', emoji: user.equipped.emoji || 'none', winAnim: user.equipped.winAnim || 'none' }; user.inventory = [...new Set([...user.inventory, ...defaultInventory])]; await user.save(); }
-        if (user.username === 'Testing') { user.bucks = 999999; await user.save(); }
+        
+        // ADMIN PRIVILEGE (Infinite Bucks)
+        if (user.username === 'Admin') { user.bucks = 999999; await user.save(); }
+        
         res.json({ message: 'Success!', user }); 
     } catch (err) { res.status(500).json({ error: 'Server Error' }); } 
 });
@@ -70,7 +62,7 @@ app.post('/update-profile', async (req, res) => {
     try { 
         const { currentUsername, newUsername, newPassword, profilePic, description, isAnonymous } = req.body; const user = await User.findOne({ username: currentUsername }); 
         if (!user) return res.status(404).json({ error: 'User not found' }); 
-        if (newUsername && newUsername !== currentUsername) { if (newUsername.toLowerCase() === 'testing') return res.status(400).json({ error: 'Username reserved.' }); const exists = await User.findOne({ username: newUsername }); if (exists) return res.status(400).json({ error: 'New username already taken' }); user.username = newUsername; } 
+        if (newUsername && newUsername !== currentUsername) { const exists = await User.findOne({ username: newUsername }); if (exists) return res.status(400).json({ error: 'New username already taken' }); user.username = newUsername; } 
         if (newPassword) user.password = await bcrypt.hash(newPassword, 10); if (profilePic !== undefined) user.profilePic = profilePic; if (description !== undefined) user.description = description; if (isAnonymous !== undefined) user.isAnonymous = isAnonymous; 
         await user.save(); res.json({ message: 'Profile updated!', user }); 
     } catch (err) { res.status(500).json({ error: 'Server Error' }); } 
@@ -80,28 +72,31 @@ app.get('/leaderboard', async (req, res) => { try { res.json(await User.find({},
 app.post('/shop/buy', async (req, res) => { try { const { username, itemId, cost } = req.body; const user = await User.findOne({ username }); if (!user) return res.status(404).json({ error: 'User not found' }); if (user.inventory.includes(itemId)) return res.status(400).json({ error: 'Already owned' }); if (user.bucks < cost) return res.status(400).json({ error: 'Not enough Bucks' }); user.bucks -= cost; user.inventory.push(itemId); await user.save(); res.json({ message: 'Purchase successful!', user }); } catch (err) { res.status(500).json({ error: 'Server Error' }); } });
 app.post('/shop/equip', async (req, res) => { try { const { username, type, slot, itemId } = req.body; const user = await User.findOne({ username }); if (!user) return res.status(404).json({ error: 'User not found' }); if (itemId !== 'none' && !user.inventory.includes(itemId)) return res.status(400).json({ error: 'You do not own this item.' }); if (type === 'piece') { if (!user.equipped.piece) user.equipped.piece = { primary: 'piece_red', secondary: 'piece_blue' }; user.equipped.piece[slot] = itemId; } else { user.equipped[type] = itemId; } user.markModified('equipped'); await user.save(); res.json({ message: 'Equipped!', user }); } catch (err) { res.status(500).json({ error: 'Server Error' }); } });
 
-// ---------------------------------------------------------
-// NEW "TALKATIVE" FEEDBACK ROUTE
-// ---------------------------------------------------------
+// NEW: DATABASE FEEDBACK ROUTES
 app.post('/send-feedback', async (req, res) => {
     try {
         const { username, type, message } = req.body;
         if (!message || message.trim() === '') return res.status(400).json({ error: "Message cannot be empty." });
-        
-        const mailOptions = { 
-            from: process.env.EMAIL_USER, 
-            to: process.env.EMAIL_USER, 
-            subject: `${type} (${username})`, 
-            text: `Player: ${username}\nType: ${type}\n\nMessage:\n${message}` 
-        };
-        
-        await transporter.sendMail(mailOptions); 
-        res.json({ message: 'Feedback sent successfully!' });
-    } catch (error) { 
-        console.error('Email error:', error); 
-        // This will now send the exact error back to the browser alert!
-        res.status(500).json({ error: `Mail Error: ${error.message}` }); 
-    }
+        const newFeedback = new Feedback({ username, type, message });
+        await newFeedback.save();
+        res.json({ message: 'Feedback successfully submitted!' });
+    } catch (error) { res.status(500).json({ error: 'Failed to save feedback.' }); }
+});
+
+app.get('/admin/feedback', async (req, res) => {
+    try {
+        if (req.query.username !== 'Admin') return res.status(403).json({ error: 'Unauthorized' });
+        const feedback = await Feedback.find().sort({ createdAt: -1 });
+        res.json(feedback);
+    } catch (error) { res.status(500).json({ error: 'Failed to fetch feedback.' }); }
+});
+
+app.delete('/admin/feedback/:id', async (req, res) => {
+    try {
+        if (req.body.username !== 'Admin') return res.status(403).json({ error: 'Unauthorized' });
+        await Feedback.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (error) { res.status(500).json({ error: 'Failed to delete.' }); }
 });
 
 async function handleGameEnd(roomName, winnerId, loserId, isQuit = false, isAfk = false) { const game = activeGames[roomName]; if (!game) return; if (turnTimers[roomName]) { clearTimeout(turnTimers[roomName]); delete turnTimers[roomName]; } let newWinnerRank = 100, newLoserRank = 100, newWinnerBucks = 0; let pointsWon = 0, pointsLost = 0; let winnerData = { username: game.playerUsernames ? game.playerUsernames[winnerId] : 'Winner', pfp: `https://api.dicebear.com/7.x/bottts/svg?seed=${winnerId}`, isAnon: false, equipped: defaultEquipped }; let loserData = { username: game.playerUsernames ? game.playerUsernames[loserId] : 'Loser', pfp: `https://api.dicebear.com/7.x/bottts/svg?seed=${loserId}`, isAnon: false, equipped: defaultEquipped }; if (winnerId && loserId) { if (isQuit) { pointsWon = 25; pointsLost = 60; } else { const rankResults = rankLogic.calculatePoints(game, winnerId, loserId); pointsWon = rankResults.pointsWon; pointsLost = rankResults.pointsLost; } try { const winnerUser = await User.findOne({ username: game.playerUsernames[winnerId] }); const loserUser = await User.findOne({ username: game.playerUsernames[loserId] }); if (winnerUser) { winnerUser.rank = (Number(winnerUser.rank) ?? 100) + pointsWon; winnerUser.bucks = (Number(winnerUser.bucks) ?? 0) + 5 + (game.pool || 0); await winnerUser.save(); newWinnerRank = winnerUser.rank; newWinnerBucks = winnerUser.bucks; winnerData = { username: winnerUser.username, pfp: winnerUser.profilePic, isAnon: winnerUser.isAnonymous, equipped: winnerUser.equipped || defaultEquipped }; } if (loserUser) { loserUser.rank = Math.max(0, (Number(loserUser.rank) ?? 100) - pointsLost); await loserUser.save(); newLoserRank = loserUser.rank; loserData = { username: loserUser.username, pfp: loserUser.profilePic, isAnon: loserUser.isAnonymous, equipped: loserUser.equipped || defaultEquipped }; } } catch (err) { console.error("DB Error", err); } } const isPrivate = game.privateCode != null; if (!isPrivate) { if (winnerData?.isAnon) winnerData = { username: 'Anonymous', pfp: 'https://api.dicebear.com/7.x/identicon/svg?seed=Anon', equipped: defaultEquipped }; if (loserData?.isAnon) loserData = { username: 'Anonymous', pfp: 'https://api.dicebear.com/7.x/identicon/svg?seed=Anon', equipped: defaultEquipped }; } const poolWinnings = game.pool && !isQuit && winnerId ? game.pool : 0; io.to(roomName).emit('gameOverScreen', { winnerId, loserId, isQuit, isAfk, isTie: !winnerId && !loserId, newWinnerRank, newLoserRank, newWinnerBucks, winnerData, loserData, pointsWon, pointsLost, rummyScores: game.rummyScores, poolWinnings }); delete activeGames[roomName]; }
@@ -111,9 +106,9 @@ function broadcastCrazyEightsState(roomName) { const game = activeGames[roomName
 
 io.on('connection', (socket) => {
     onlinePlayersCount++; io.emit('onlineCount', onlinePlayersCount);
-    socket.on('joinQueue', (username) => { socket.username = username; if (username !== 'Testing') { if (matchmakingQueue.some(p => p.username === username)) return socket.emit('queueError', 'You are already in the matchmaking queue!'); const inGame = Object.values(activeGames).some(g => g.playerUsernames && Object.values(g.playerUsernames).includes(username)); if (inGame) return socket.emit('queueError', 'You are already in an active game!'); } matchmakingQueue = matchmakingQueue.filter(p => p.id !== socket.id); matchmakingQueue.push(socket); if (matchmakingQueue.length >= 2) { const player1 = matchmakingQueue.shift(); const player2 = matchmakingQueue.shift(); const minigames = ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Mini Chess', 'Crazy Eights', 'Rummy', 'Endless Tic-Tac-Toe']; const roomName = `room_${Date.now()}_${player1.id}_${player2.id}`; player1.join(roomName); player2.join(roomName); initializeGame(roomName, minigames[Math.floor(Math.random() * minigames.length)], player1, player2, null); } });
+    socket.on('joinQueue', (username) => { socket.username = username; if (matchmakingQueue.some(p => p.username === username)) return socket.emit('queueError', 'You are already in the matchmaking queue!'); const inGame = Object.values(activeGames).some(g => g.playerUsernames && Object.values(g.playerUsernames).includes(username)); if (inGame) return socket.emit('queueError', 'You are already in an active game!'); matchmakingQueue = matchmakingQueue.filter(p => p.id !== socket.id); matchmakingQueue.push(socket); if (matchmakingQueue.length >= 2) { const player1 = matchmakingQueue.shift(); const player2 = matchmakingQueue.shift(); const minigames = ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Mini Chess', 'Crazy Eights', 'Rummy', 'Endless Tic-Tac-Toe']; const roomName = `room_${Date.now()}_${player1.id}_${player2.id}`; player1.join(roomName); player2.join(roomName); initializeGame(roomName, minigames[Math.floor(Math.random() * minigames.length)], player1, player2, null); } });
     socket.on('createPrivateRoom', ({ username, code }) => { if (privateRooms[code]) return socket.emit('privateError', 'Code already exists!'); socket.username = username; privateRooms[code] = { host: socket.id, players: [socket], messages: [] }; socket.join(`private_${code}`); socket.emit('privateRoomJoined', { code, isHost: true, players: [username], messages: [] }); });
-    socket.on('joinPrivateRoom', ({ username, code }) => { const room = privateRooms[code]; if (!room) return socket.emit('privateError', 'Room not found!'); if (room.players.length >= 2) return socket.emit('privateError', 'Room is full!'); if (username !== 'Testing') { const inGame = Object.values(activeGames).some(g => g.playerUsernames && Object.values(g.playerUsernames).includes(username)); if (inGame || room.players.some(p => p.username === username)) return socket.emit('privateError', 'You are already in this room or an active game!'); } socket.username = username; room.players.push(socket); socket.join(`private_${code}`); const playerNames = room.players.map(p => p.username); socket.emit('privateRoomJoined', { code, isHost: false, players: playerNames, messages: room.messages }); io.to(`private_${code}`).emit('updateLobbyPlayers', playerNames); });
+    socket.on('joinPrivateRoom', ({ username, code }) => { const room = privateRooms[code]; if (!room) return socket.emit('privateError', 'Room not found!'); if (room.players.length >= 2) return socket.emit('privateError', 'Room is full!'); const inGame = Object.values(activeGames).some(g => g.playerUsernames && Object.values(g.playerUsernames).includes(username)); if (inGame || room.players.some(p => p.username === username)) return socket.emit('privateError', 'You are already in this room or an active game!'); socket.username = username; room.players.push(socket); socket.join(`private_${code}`); const playerNames = room.players.map(p => p.username); socket.emit('privateRoomJoined', { code, isHost: false, players: playerNames, messages: room.messages }); io.to(`private_${code}`).emit('updateLobbyPlayers', playerNames); });
     socket.on('sendPrivateChat', ({ code, message, username }) => { const room = privateRooms[code]; if (room) { const msgObj = { username, text: message }; room.messages.push(msgObj); io.to(`private_${code}`).emit('updatePrivateChat', msgObj); } });
     socket.on('startPrivateGame', ({ code, gameSelection }) => { const room = privateRooms[code]; if (room && room.host === socket.id && room.players.length === 2) { const player1 = room.players[0]; const player2 = room.players[1]; const roomName = `room_${Date.now()}_${player1.id}_${player2.id}`; player1.join(roomName); player2.join(roomName); let chosenGame = gameSelection === 'Random' ? ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Mini Chess', 'Crazy Eights', 'Rummy', 'Endless Tic-Tac-Toe'][Math.floor(Math.random() * 8)] : gameSelection; initializeGame(roomName, chosenGame, player1, player2, code); } });
     socket.on('sendInGameChat', ({ roomName, message, username }) => { io.to(roomName).emit('receiveInGameChat', { username, message }); });
