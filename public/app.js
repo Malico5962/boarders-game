@@ -40,7 +40,7 @@ const mcContainer = document.getElementById('mc-container'); const mcBoard = doc
 const c8Container = document.getElementById('c8-container'); const c8OppHand = document.getElementById('c8-opp-hand'); const c8MyHand = document.getElementById('c8-my-hand'); const c8Discard = document.getElementById('c8-discard'); const c8Deck = document.getElementById('c8-deck'); const c8ActiveSuit = document.getElementById('c8-active-suit');
 const rmContainer = document.getElementById('rm-container'); const rmOppHand = document.getElementById('rm-opp-hand'); const rmMyHand = document.getElementById('rm-my-hand'); const rmDiscardPile = document.getElementById('rm-discard-pile'); const rmDeck = document.getElementById('rm-deck'); const rmMeldArea = document.getElementById('rm-meld-area');
 
-// NEW: Global Map containing all Permanent and Thematic background graphics!
+// MAPS for Colors, Banners, and Icons
 window.COLOR_MAP = { 
     red: '#ff003c', orange: '#ff8800', yellow: '#ffcc00', green: '#00e640', blue: '#0088ff', purple: '#b000ff', 
     cards: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' opacity='0.5'%3E%3Ctext x='10' y='40' font-size='30'%3E♠%3C/text%3E%3Ctext x='60' y='80' font-size='30' fill='red'%3E♥%3C/text%3E%3Ctext x='20' y='90' font-size='30' fill='red'%3E♦%3C/text%3E%3Ctext x='70' y='30' font-size='30'%3E♣%3C/text%3E%3C/svg%3E"), linear-gradient(135deg, rgba(255,71,87,0.8), rgba(255,255,255,0.9), rgba(47,53,66,0.8))`, 
@@ -53,7 +53,23 @@ window.COLOR_MAP = {
     none: null 
 };
 
-// NEW: Dynamic Logic for resolving Banner Backgrounds
+window.ICON_MAP = {
+    'icon_early_access': '🌟',
+    'icon_win_SuperTic-Tac-Toe': '❌',
+    'icon_win_EndlessTic-Tac-Toe': '♾️',
+    'icon_win_Connect4': '🔴',
+    'icon_win_DotsandBoxes': '🟦',
+    'icon_win_Battleship': '🚢',
+    'icon_win_MiniChess': '♚',
+    'icon_win_CrazyEights': '🃏',
+    'icon_win_Rummy': '🎴',
+    'icon_top10_vet': '🎖️',
+    'icon_bronze_champ': '🥉',
+    'icon_silver_champ': '🥈',
+    'icon_gold_champ': '🥇',
+    'none': ''
+};
+
 window.getBannerStyle = function(bannerId, lbPos) {
     if (!bannerId || bannerId === 'none') return 'rgba(255,255,255,0.5)';
     if (bannerId === 'banner_dynamic_lb') {
@@ -116,16 +132,19 @@ async function handleAuth(action) {
     const data = await res.json();
     if (res.ok) { 
         window.myUserObj = data.user; 
-        window.myUserObj.lbPosition = data.lbPosition; // Cache rank
+        window.myUserObj.lbPosition = data.lbPosition; 
         localStorage.setItem('boarders_account', JSON.stringify({ username, password })); window.myUsername = window.myUserObj.username; authSection.style.display = 'none'; gameSection.style.display = 'block'; window.updateDashboardUI(); 
     } else { localStorage.removeItem('boarders_account'); authError.innerText = data.error; }
 }
 
 window.updateDashboardUI = function() {
-    playerNameDisplay.innerText = window.myUserObj.username; playerRankDisplay.innerText = window.myUserObj.rank;
+    const userIcon = window.ICON_MAP[window.myUserObj.equipped?.icon || 'icon_early_access'] || '';
+    
+    // Inject the icon in front of the name with a white stroke class
+    playerNameDisplay.innerHTML = `<span class="lb-stroke" style="font-size:1.1em; margin-right:8px;">${userIcon}</span>${window.myUserObj.username}`; 
+    playerRankDisplay.innerText = window.myUserObj.rank;
     document.getElementById('playerBucksDisplay').innerText = window.myUserObj.bucks || 0; 
     
-    // Auto-Unequip logic if they fell off the leaderboard!
     let bannerEq = window.myUserObj.equipped?.banner || 'none';
     if (bannerEq === 'banner_dynamic_lb' && !window.myUserObj.lbPosition) {
         bannerEq = 'none'; window.myUserObj.equipped.banner = 'none';
@@ -230,7 +249,7 @@ async function loadAdminFeedback() {
 window.deleteFeedback = async function(id) { if(window.sfx) window.sfx.pop(); try { await fetch(`/admin/feedback/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: window.myUsername }) }); loadAdminFeedback(); } catch(e) { alert('Delete failed'); } }
 window.deleteUser = async function(targetUsername) { if (!confirm(`Are you sure you want to permanently delete and ban ${targetUsername}?`)) return; if(window.sfx) window.sfx.pop(); try { const res = await fetch(`/admin/user/${targetUsername}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminName: window.myUsername }) }); if (res.ok) loadAdminFeedback(); else alert("Failed to delete user."); } catch(e) { alert('Delete failed'); } }
 
-// LEADERBOARD RENDERER - Uses the new getBannerStyle helper
+// LEADERBOARD RENDERER - Now injects Icons!
 document.getElementById('viewLeaderboardBtn').addEventListener('click', async () => { 
     document.getElementById('leaderboard-modal').style.display = 'flex'; 
     const res = await fetch('/leaderboard'); const data = await res.json(); 
@@ -238,13 +257,14 @@ document.getElementById('viewLeaderboardBtn').addEventListener('click', async ()
         const lbPos = i + 1;
         const borderEq = u.equipped?.border?.replace('border_', '') || 'none';
         const bannerEq = u.equipped?.banner || 'none';
+        const iconEq = window.ICON_MAP[u.equipped?.icon || 'icon_early_access'] || '';
         const borderColor = window.COLOR_MAP[borderEq] || 'var(--primary)';
         
         return `<div class="leaderboard-item" style="background: ${window.getBannerStyle(bannerEq, lbPos)}; background-size: cover; background-position: center; margin-bottom: 5px; border-radius: 15px;">
             <div class="lb-left">
                 <span style="margin-right: 15px;" class="lb-stroke">#${lbPos}</span>
                 <img src="${u.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username}`}" style="border-color: ${borderColor};">
-                <span class="lb-stroke">${u.username}</span>
+                <span class="lb-stroke" style="margin-right: 8px;">${iconEq}</span><span class="lb-stroke">${u.username}</span>
             </div>
             <div>
                 <span style="margin-right: 10px;" class="lb-stroke">${u.rank} ⭐</span>
@@ -290,16 +310,12 @@ socket.on('updateLobbyPlayers', (players) => { document.getElementById('lobbyPla
 document.getElementById('sendChatBtn').addEventListener('click', () => { const text = document.getElementById('chatInput').value; if (text && myPrivateCode) { socket.emit('sendPrivateChat', { code: myPrivateCode, message: text, username: window.myUsername }); document.getElementById('chatInput').value = ''; } }); socket.on('updatePrivateChat', (msg) => { const chatBox = document.getElementById('chat-box'); chatBox.innerHTML += `<div class="chat-msg"><span>${msg.username}:</span> ${msg.text}</div>`; chatBox.scrollTop = chatBox.scrollHeight; });
 document.getElementById('startPrivateBtn').addEventListener('click', () => { socket.emit('startPrivateGame', { code: myPrivateCode, gameSelection: document.getElementById('gameSelector').value }); }); document.getElementById('leaveLobbyBtn').addEventListener('click', () => location.reload());
 
-// EMOJI DROP - Natively centered on the viewport!
 socket.on('receiveEmoji', ({ senderId, emoji }) => {
     if(window.sfx) window.sfx.chime();
     const isP1 = senderId === window.p1Id;
     const em = document.createElement('div'); em.innerText = emoji; 
-    
-    // Spawns absolutely positioned right beside the board based on who clicked!
     em.style.cssText = 'position:fixed; font-size:6rem; top:35%; z-index:1000; pointer-events:none; animation: floatEmoji 2s ease-out forwards; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.4));'; 
     em.style[isP1 ? 'left' : 'right'] = '20vw'; 
-    
     document.body.appendChild(em); 
     setTimeout(() => em.remove(), 2000);
 });
@@ -336,23 +352,27 @@ socket.on('startGame', (gameState) => {
     
     const p1Banner = p1Eq.banner || 'none';
     const p2Banner = p2Eq.banner || 'none';
+    
+    const p1Icon = window.ICON_MAP[p1Eq.icon || 'icon_early_access'] || '';
+    const p2Icon = window.ICON_MAP[p2Eq.icon || 'icon_early_access'] || '';
 
     document.getElementById('p1-pfp').style.borderColor = p1Border; document.getElementById('p2-pfp').style.borderColor = p2Border;
     
-    // Safely apply in-game banners
     document.getElementById('p1-info').style.background = window.getBannerStyle(p1Banner, p1Data.lbPosition); 
-    document.getElementById('p1-info').style.backgroundSize = "cover";
-    document.getElementById('p1-info').style.backgroundPosition = "center";
+    document.getElementById('p1-info').style.backgroundSize = "cover"; document.getElementById('p1-info').style.backgroundPosition = "center";
     
     document.getElementById('p2-info').style.background = window.getBannerStyle(p2Banner, p2Data.lbPosition);
-    document.getElementById('p2-info').style.backgroundSize = "cover";
-    document.getElementById('p2-info').style.backgroundPosition = "center";
+    document.getElementById('p2-info').style.backgroundSize = "cover"; document.getElementById('p2-info').style.backgroundPosition = "center";
     
     document.getElementById('p1-name').classList.add('lb-stroke'); document.getElementById('p1-rank').classList.add('lb-stroke');
     document.getElementById('p2-name').classList.add('lb-stroke'); document.getElementById('p2-rank').classList.add('lb-stroke');
 
-    document.getElementById('p1-name').innerText = p1Data.username; document.getElementById('p1-rank').innerText = `${p1Data.rank}⭐`; document.getElementById('p1-pfp').src = p1Data.pfp;
-    document.getElementById('p2-name').innerText = p2Data.username; document.getElementById('p2-rank').innerText = `${p2Data.rank}⭐`; document.getElementById('p2-pfp').src = p2Data.pfp;
+    // Inject Icons In-Game
+    document.getElementById('p1-name').innerHTML = `<span style="margin-right:5px;">${p1Icon}</span>${p1Data.username}`; 
+    document.getElementById('p1-rank').innerText = `${p1Data.rank}⭐`; document.getElementById('p1-pfp').src = p1Data.pfp;
+    
+    document.getElementById('p2-name').innerHTML = `<span style="margin-right:5px;">${p2Icon}</span>${p2Data.username}`; 
+    document.getElementById('p2-rank').innerText = `${p2Data.rank}⭐`; document.getElementById('p2-pfp').src = p2Data.pfp;
 
     if (window.currentGameType === 'Connect 4') roleDisplay.innerHTML = `You are playing as: <strong style="color:${window.mySymbol === 'Red' ? window.p1Color : window.p2Color}">${window.mySymbol}</strong>`;
     else if (window.currentGameType === 'Dots and Boxes') roleDisplay.innerHTML = `You are playing as: <strong style="color:${window.mySymbol === 'Red' ? window.p1Color : window.p2Color}">${window.mySymbol}</strong>`;
@@ -453,7 +473,6 @@ socket.on('gameOverScreen', (data) => {
         
         if (amIWinner) { playerRankDisplay.innerText = data.newWinnerRank; window.myUserObj.rank = data.newWinnerRank; } else { playerRankDisplay.innerText = data.newLoserRank; window.myUserObj.rank = data.newLoserRank; }
         
-        // Ensure winner/loser cache matches new DB ranking for final screen
         if (amIWinner && data.winnerData.lbPosition !== undefined) window.myUserObj.lbPosition = data.winnerData.lbPosition;
         if (amILoser && data.loserData.lbPosition !== undefined) window.myUserObj.lbPosition = data.loserData.lbPosition;
         
@@ -476,14 +495,12 @@ window.resetBoardUI = function() {
     stttBoard.innerHTML = ''; for (let i = 0; i < 9; i++) { const macroCell = document.createElement('div'); macroCell.className = 'macro-cell'; macroCell.id = `macro-${i}`; for (let j = 0; j < 9; j++) { const microCell = document.createElement('div'); microCell.className = 'micro-cell'; microCell.id = `micro-${i}-${j}`; microCell.onclick = () => { if (window.currentGameType === 'Super Tic-Tac-Toe') socket.emit('makeMove', { roomName: window.currentRoom, macroIndex: i, microIndex: j }); }; macroCell.appendChild(microCell); } stttBoard.appendChild(macroCell); }
     tttBoard.innerHTML = ''; for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const cell = document.createElement('div'); cell.className = 'ttt-cell'; cell.id = `ttt-${r}-${c}`; cell.onclick = () => { if (window.currentGameType === 'Endless Tic-Tac-Toe') socket.emit('makeTTTEndlessMove', { roomName: window.currentRoom, r, c }); }; tttBoard.appendChild(cell); } }
     
-    // FIX: Clear Connect 4 properly to avoid row stacking!
     c4Board.innerHTML = ''; 
     for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = document.createElement('div'); cell.className = 'c4-cell'; cell.id = `c4-${r}-${c}`; cell.onclick = () => { if (window.currentGameType === 'Connect 4') socket.emit('makeC4Move', { roomName: window.currentRoom, col: c }); }; c4Board.appendChild(cell); } }
     
     for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const h = document.getElementById(`h-${r}-${c}`); if(h) { h.className = 'dab-hline'; h.removeAttribute('style'); } } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const v = document.getElementById(`v-${r}-${c}`); if(v) { v.className = 'dab-vline'; v.removeAttribute('style'); } } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const b = document.getElementById(`box-${r}-${c}`); if(b) { b.className = 'dab-box'; b.innerText = ''; b.removeAttribute('style'); } } } document.getElementById('dab-score-red').innerText = '0'; document.getElementById('dab-score-blue').innerText = '0';
     for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const m = document.getElementById(`bs-my-${r}-${c}`); if(m) { m.className = 'bs-cell'; m.innerText = ''; } const t = document.getElementById(`bs-target-${r}-${c}`); if(t) { t.className = 'bs-cell'; t.innerText = ''; } } }
     
-    // FIX: Clear Mini Chess properly to avoid row stacking!
     mcBoard.innerHTML = ''; 
     for (let r = 0; r < 4; r++) { for (let c = 0; c < 8; c++) { const cell = document.createElement('div'); cell.id = `mc-${r}-${c}`; cell.className = `mc-cell ${(r + c) % 2 === 0 ? 'mc-light' : 'mc-dark'}`; cell.onclick = () => { if (window.currentGameType !== 'Mini Chess' || !lastChessGame || lastChessGame.turn !== window.mySymbol) return; const piece = lastChessGame.board[r][c]; const isMyPiece = (window.mySymbol === 'Player 1' && piece >= 11 && piece <= 15) || (window.mySymbol === 'Player 2' && piece >= 21 && piece <= 25); if (mcSelected) { if (isMyPiece) { mcSelected = {r, c}; updateChessUI(lastChessGame); } else { if (isValidChessMoveClient(lastChessGame.board, window.mySymbol, mcSelected.r, mcSelected.c, r, c)) { socket.emit('makeChessMove', { roomName: window.currentRoom, fromR: mcSelected.r, fromC: mcSelected.c, toR: r, toC: c }); } mcSelected = null; updateChessUI(lastChessGame); } } else { if (isMyPiece) { mcSelected = {r, c}; updateChessUI(lastChessGame); } } }; mcBoard.appendChild(cell); } }
     

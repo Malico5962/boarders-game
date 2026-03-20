@@ -12,10 +12,12 @@ mongoose.connect(process.env.MONGO_URI).then(() => {
     updateLeaderboardAndAwards(); 
 }).catch(err => console.error('❌ MongoDB Connection Error:', err));
 
-const defaultInventory = ['piece_red', 'piece_blue', 'cardBack_red', 'banner_dynamic_lb'];
-const defaultEquipped = { border: 'none', banner: 'none', piece: { primary: 'piece_red', secondary: 'piece_blue' }, cardBack: 'cardBack_red', emoji: 'none', winAnim: 'none' };
+// NEW: Added 'icon_early_access' to defaults!
+const defaultInventory = ['piece_red', 'piece_blue', 'cardBack_red', 'banner_dynamic_lb', 'icon_early_access'];
+const defaultEquipped = { border: 'none', banner: 'none', piece: { primary: 'piece_red', secondary: 'piece_blue' }, cardBack: 'cardBack_red', emoji: 'none', winAnim: 'none', icon: 'icon_early_access' };
 
-const userSchema = new mongoose.Schema({ username: { type: String, required: true, unique: true }, password: { type: String, required: true }, rank: { type: Number, default: 100 }, bucks: { type: Number, default: 0 }, profilePic: { type: String, default: '' }, description: { type: String, default: 'I love Boarders!' }, isAnonymous: { type: Boolean, default: false }, inventory: { type: [String], default: defaultInventory }, equipped: { type: Object, default: defaultEquipped }, createdAt: { type: Date, default: Date.now } });
+// NEW: Added 'stats' to userSchema to track game wins!
+const userSchema = new mongoose.Schema({ username: { type: String, required: true, unique: true }, password: { type: String, required: true }, rank: { type: Number, default: 100 }, bucks: { type: Number, default: 0 }, profilePic: { type: String, default: '' }, description: { type: String, default: 'I love Boarders!' }, isAnonymous: { type: Boolean, default: false }, inventory: { type: [String], default: defaultInventory }, equipped: { type: Object, default: defaultEquipped }, stats: { type: Object, default: {} }, createdAt: { type: Date, default: Date.now } });
 const User = mongoose.model('User', userSchema);
 
 const feedbackSchema = new mongoose.Schema({ username: String, type: String, message: String, createdAt: { type: Date, default: Date.now } });
@@ -23,7 +25,6 @@ const Feedback = mongoose.model('Feedback', feedbackSchema);
 
 let matchmakingQueue = []; const activeGames = {}; let onlinePlayersCount = 0; const privateRooms = {}; 
 
-// NEW: Dynamic Leaderboard Position Calculator
 async function getLbPos(username) {
     if (username === 'Admin') return null;
     const top = await User.find({ username: { $ne: 'Admin' } }).sort({ rank: -1 }).limit(10);
@@ -31,7 +32,7 @@ async function getLbPos(username) {
     return idx !== -1 ? idx + 1 : null;
 }
 
-// NEW: Award Permanent Banners to the Top 3 & Top 10
+// NEW: Award LB Icons along with the Banners!
 async function updateLeaderboardAndAwards() {
     try {
         const topUsers = await User.find({ username: { $ne: 'Admin' } }).sort({ rank: -1 }).limit(10);
@@ -40,10 +41,10 @@ async function updateLeaderboardAndAwards() {
             let changed = false;
             const awardItem = (itemId) => { if (!user.inventory.includes(itemId)) { user.inventory.push(itemId); changed = true; } };
 
-            awardItem('banner_top10_vet'); // Everyone in Top 10 gets the Veteran banner
-            if (i === 0) awardItem('banner_gold_champ');
-            if (i === 1) awardItem('banner_silver_champ');
-            if (i === 2) awardItem('banner_bronze_champ');
+            awardItem('banner_top10_vet'); awardItem('icon_top10_vet');
+            if (i === 0) { awardItem('banner_gold_champ'); awardItem('icon_gold_champ'); }
+            if (i === 1) { awardItem('banner_silver_champ'); awardItem('icon_silver_champ'); }
+            if (i === 2) { awardItem('banner_bronze_champ'); awardItem('icon_bronze_champ'); }
 
             if (changed) await user.save();
         }
@@ -68,7 +69,7 @@ app.post('/register', async (req, res) => {
         const { username, password } = req.body; 
         if (await User.findOne({ username })) return res.status(400).json({ error: 'Username taken' }); 
         const hashedPassword = await bcrypt.hash(password, 10); const defaultPfp = `https://api.dicebear.com/7.x/bottts/svg?seed=${username}`; 
-        const newUser = new User({ username, password: hashedPassword, rank: 100, bucks: 0, profilePic: defaultPfp, inventory: defaultInventory, equipped: defaultEquipped }); 
+        const newUser = new User({ username, password: hashedPassword, rank: 100, bucks: 0, profilePic: defaultPfp, inventory: defaultInventory, equipped: defaultEquipped, stats: {} }); 
         await newUser.save(); await updateLeaderboardAndAwards();
         const lbPosition = await getLbPos(newUser.username);
         res.json({ message: 'Success!', user: newUser, lbPosition }); 
@@ -79,9 +80,18 @@ app.post('/login', async (req, res) => {
     try { 
         const { username, password } = req.body; const user = await User.findOne({ username }); 
         if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Invalid credentials' }); 
-        if (!user.inventory.includes('banner_dynamic_lb')) { user.inventory.push('banner_dynamic_lb'); await user.save(); }
-        if (user.equipped && typeof user.equipped.piece === 'string') { user.equipped = { border: user.equipped.border || 'none', banner: user.equipped.banner || 'none', piece: { primary: user.equipped.piece || 'piece_red', secondary: 'piece_blue' }, cardBack: user.equipped.cardBack || 'cardBack_red', emoji: user.equipped.emoji || 'none', winAnim: user.equipped.winAnim || 'none' }; user.inventory = [...new Set([...user.inventory, ...defaultInventory])]; await user.save(); }
-        if (user.username === 'Admin') { user.bucks = 999999; await user.save(); }
+        
+        // Auto-patch old accounts to have the new stats and icon systems!
+        let changed = false;
+        if (!user.inventory.includes('banner_dynamic_lb')) { user.inventory.push('banner_dynamic_lb'); changed = true; }
+        if (!user.inventory.includes('icon_early_access')) { user.inventory.push('icon_early_access'); changed = true; }
+        if (!user.equipped.icon) { user.equipped.icon = 'icon_early_access'; user.markModified('equipped'); changed = true; }
+        if (!user.stats) { user.stats = {}; changed = true; }
+        if (user.equipped && typeof user.equipped.piece === 'string') { user.equipped = { border: user.equipped.border || 'none', banner: user.equipped.banner || 'none', piece: { primary: user.equipped.piece || 'piece_red', secondary: 'piece_blue' }, cardBack: user.equipped.cardBack || 'cardBack_red', emoji: user.equipped.emoji || 'none', winAnim: user.equipped.winAnim || 'none', icon: user.equipped.icon || 'icon_early_access' }; user.inventory = [...new Set([...user.inventory, ...defaultInventory])]; changed = true; }
+        
+        if (user.username === 'Admin') { user.bucks = 999999; changed = true; }
+        if (changed) await user.save();
+        
         const lbPosition = await getLbPos(user.username);
         res.json({ message: 'Success!', user, lbPosition }); 
     } catch (err) { res.status(500).json({ error: 'Server Error' }); } 
@@ -108,8 +118,28 @@ app.get('/leaderboard', async (req, res) => {
     catch (err) { res.status(500).json({ error: 'Server Error' }); } 
 });
 
-app.post('/shop/buy', async (req, res) => { try { const { username, itemId, cost } = req.body; const user = await User.findOne({ username }); if (!user) return res.status(404).json({ error: 'User not found' }); if (user.inventory.includes(itemId)) return res.status(400).json({ error: 'Already owned' }); if (user.bucks < cost) return res.status(400).json({ error: 'Not enough Bucks' }); user.bucks -= cost; user.inventory.push(itemId); await user.save(); res.json({ message: 'Purchase successful!', user }); } catch (err) { res.status(500).json({ error: 'Server Error' }); } });
-app.post('/shop/equip', async (req, res) => { try { const { username, type, slot, itemId } = req.body; const user = await User.findOne({ username }); if (!user) return res.status(404).json({ error: 'User not found' }); if (itemId !== 'none' && !user.inventory.includes(itemId)) return res.status(400).json({ error: 'You do not own this item.' }); if (type === 'piece') { if (!user.equipped.piece) user.equipped.piece = { primary: 'piece_red', secondary: 'piece_blue' }; user.equipped.piece[slot] = itemId; } else { user.equipped[type] = itemId; } user.markModified('equipped'); await user.save(); res.json({ message: 'Equipped!', user }); } catch (err) { res.status(500).json({ error: 'Server Error' }); } });
+// FIX: Ensure lbPosition is returned on Buy!
+app.post('/shop/buy', async (req, res) => { 
+    try { 
+        const { username, itemId, cost } = req.body; const user = await User.findOne({ username }); 
+        if (!user) return res.status(404).json({ error: 'User not found' }); if (user.inventory.includes(itemId)) return res.status(400).json({ error: 'Already owned' }); if (user.bucks < cost) return res.status(400).json({ error: 'Not enough Bucks' }); 
+        user.bucks -= cost; user.inventory.push(itemId); await user.save(); 
+        const lbPosition = await getLbPos(user.username);
+        res.json({ message: 'Purchase successful!', user, lbPosition }); 
+    } catch (err) { res.status(500).json({ error: 'Server Error' }); } 
+});
+
+// FIX: Ensure lbPosition is returned on Equip! (Fixes "Unranked" glitch)
+app.post('/shop/equip', async (req, res) => { 
+    try { 
+        const { username, type, slot, itemId } = req.body; const user = await User.findOne({ username }); 
+        if (!user) return res.status(404).json({ error: 'User not found' }); if (itemId !== 'none' && !user.inventory.includes(itemId)) return res.status(400).json({ error: 'You do not own this item.' }); 
+        if (type === 'piece') { if (!user.equipped.piece) user.equipped.piece = { primary: 'piece_red', secondary: 'piece_blue' }; user.equipped.piece[slot] = itemId; } else { user.equipped[type] = itemId; } 
+        user.markModified('equipped'); await user.save(); 
+        const lbPosition = await getLbPos(user.username);
+        res.json({ message: 'Equipped!', user, lbPosition }); 
+    } catch (err) { res.status(500).json({ error: 'Server Error' }); } 
+});
 
 app.post('/send-feedback', async (req, res) => { try { const { username, type, message } = req.body; if (!message || message.trim() === '') return res.status(400).json({ error: "Message cannot be empty." }); const newFeedback = new Feedback({ username, type, message }); await newFeedback.save(); res.json({ message: 'Feedback successfully submitted!' }); } catch (error) { res.status(500).json({ error: 'Failed to save feedback.' }); } });
 app.get('/admin/feedback', async (req, res) => { try { if (req.query.username !== 'Admin') return res.status(403).json({ error: 'Unauthorized' }); res.json(await Feedback.find().sort({ createdAt: -1 })); } catch (error) { res.status(500).json({ error: 'Failed to fetch feedback.' }); } });
@@ -126,16 +156,28 @@ async function handleGameEnd(roomName, winnerId, loserId, isQuit = false, isAfk 
         if (isQuit) { pointsWon = 25; pointsLost = 60; } else { const rankResults = rankLogic.calculatePoints(game, winnerId, loserId); pointsWon = rankResults.pointsWon; pointsLost = rankResults.pointsLost; } 
         try { 
             const winnerUser = await User.findOne({ username: game.playerUsernames[winnerId] }); const loserUser = await User.findOne({ username: game.playerUsernames[loserId] }); 
-            if (winnerUser) { winnerUser.rank = (Number(winnerUser.rank) ?? 100) + pointsWon; winnerUser.bucks = (Number(winnerUser.bucks) ?? 0) + 5 + (game.pool || 0); await winnerUser.save(); newWinnerRank = winnerUser.rank; newWinnerBucks = winnerUser.bucks; winnerData = { username: winnerUser.username, pfp: winnerUser.profilePic, isAnon: winnerUser.isAnonymous, equipped: winnerUser.equipped || defaultEquipped }; } 
+            if (winnerUser) { 
+                winnerUser.rank = (Number(winnerUser.rank) ?? 100) + pointsWon; 
+                winnerUser.bucks = (Number(winnerUser.bucks) ?? 0) + 5 + (game.pool || 0); 
+                
+                // NEW: Win Tracking and 10-Win Icon Awards!
+                winnerUser.stats = winnerUser.stats || {};
+                winnerUser.stats[game.gameType] = (winnerUser.stats[game.gameType] || 0) + 1;
+                winnerUser.markModified('stats');
+                
+                if (winnerUser.stats[game.gameType] === 10) {
+                    const iconId = `icon_win_${game.gameType.replace(/\s+/g, '')}`;
+                    if (!winnerUser.inventory.includes(iconId)) winnerUser.inventory.push(iconId);
+                }
+
+                await winnerUser.save(); newWinnerRank = winnerUser.rank; newWinnerBucks = winnerUser.bucks; winnerData = { username: winnerUser.username, pfp: winnerUser.profilePic, isAnon: winnerUser.isAnonymous, equipped: winnerUser.equipped || defaultEquipped }; 
+            } 
             if (loserUser) { loserUser.rank = Math.max(0, (Number(loserUser.rank) ?? 100) - pointsLost); await loserUser.save(); newLoserRank = loserUser.rank; loserData = { username: loserUser.username, pfp: loserUser.profilePic, isAnon: loserUser.isAnonymous, equipped: loserUser.equipped || defaultEquipped }; } 
-            await updateLeaderboardAndAwards(); // Refresh DB awards dynamically after points are assigned!
+            await updateLeaderboardAndAwards(); 
         } catch (err) { console.error("DB Error", err); } 
     } 
     
-    // Inject the real-time leaderboard position into the game over payload
-    winnerData.lbPosition = await getLbPos(winnerData.username);
-    loserData.lbPosition = await getLbPos(loserData.username);
-
+    winnerData.lbPosition = await getLbPos(winnerData.username); loserData.lbPosition = await getLbPos(loserData.username);
     const isPrivate = game.privateCode != null; 
     if (!isPrivate) { if (winnerData?.isAnon) winnerData = { username: 'Anonymous', pfp: 'https://api.dicebear.com/7.x/identicon/svg?seed=Anon', equipped: defaultEquipped }; if (loserData?.isAnon) loserData = { username: 'Anonymous', pfp: 'https://api.dicebear.com/7.x/identicon/svg?seed=Anon', equipped: defaultEquipped }; } 
     const poolWinnings = game.pool && !isQuit && winnerId ? game.pool : 0; 
@@ -176,7 +218,6 @@ function broadcastCrazyEightsState(roomName) { const game = activeGames[roomName
 io.on('connection', (socket) => {
     onlinePlayersCount++; io.emit('onlineCount', onlinePlayersCount);
     
-    // NEW: Testing and Admin accounts bypass the "already in queue" filter!
     socket.on('joinQueue', (username) => { 
         socket.username = username; 
         if (username !== 'Testing' && username !== 'Admin') {

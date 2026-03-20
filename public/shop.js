@@ -12,10 +12,11 @@ shopStyles.innerHTML = `
 document.head.appendChild(shopStyles);
 
 const catalogColors = { red: '#ff003c', orange: '#ff8800', yellow: '#ffcc00', green: '#00e640', blue: '#0088ff', purple: '#b000ff' };
-const defaultItemIds = ['piece_red', 'piece_blue', 'cardBack_red', 'banner_dynamic_lb'];
+const defaultItemIds = ['piece_red', 'piece_blue', 'cardBack_red', 'banner_dynamic_lb', 'icon_early_access'];
 const SHOP_CATALOG = [];
 const variants = ['red', 'orange', 'yellow', 'green', 'blue', 'purple'];
 
+// Base cosmetics
 variants.forEach(color => {
     const capColor = color.charAt(0).toUpperCase() + color.slice(1);
     SHOP_CATALOG.push({ id: `border_${color}`, name: `${capColor} Border`, type: 'border', cost: 20, hex: catalogColors[color] });
@@ -24,7 +25,7 @@ variants.forEach(color => {
     SHOP_CATALOG.push({ id: `cardBack_${color}`, name: `${capColor} Deck`, type: 'cardBack', cost: 100, hex: catalogColors[color] });
 });
 
-// Themed Banners
+// Themed Banners (with SVG vectors!)
 const bannerCards = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' opacity='0.5'%3E%3Ctext x='10' y='40' font-size='30'%3E♠%3C/text%3E%3Ctext x='60' y='80' font-size='30' fill='red'%3E♥%3C/text%3E%3Ctext x='20' y='90' font-size='30' fill='red'%3E♦%3C/text%3E%3Ctext x='70' y='30' font-size='30'%3E♣%3C/text%3E%3C/svg%3E"), linear-gradient(135deg, rgba(255,71,87,0.8), rgba(255,255,255,0.9), rgba(47,53,66,0.8))`;
 const bannerChess = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' opacity='0.3'%3E%3Ctext x='10' y='40' font-size='40'%3E♞%3C/text%3E%3Ctext x='50' y='90' font-size='40'%3E♛%3C/text%3E%3C/svg%3E"), repeating-linear-gradient(45deg, #f1f2f6 0%, #f1f2f6 25px, #dfe6e9 25px, #dfe6e9 50px)`;
 const bannerC4 = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60' opacity='0.6'%3E%3Ccircle cx='15' cy='15' r='10' fill='%23ff4757'/%3E%3Ccircle cx='45' cy='45' r='10' fill='%23ffcc00'/%3E%3Ccircle cx='15' cy='45' r='10' fill='%23ff4757'/%3E%3Ccircle cx='45' cy='15' r='10' fill='%23ffcc00'/%3E%3C/svg%3E"), linear-gradient(to bottom right, #0984e3, #0652dd)`;
@@ -33,13 +34,29 @@ SHOP_CATALOG.push({ id: `banner_cards`, name: `Card Shark Banner`, type: 'banner
 SHOP_CATALOG.push({ id: `banner_chess`, name: `Grandmaster Banner`, type: 'banner', cost: 75, hex: bannerChess });
 SHOP_CATALOG.push({ id: `banner_c4`, name: `Connect 4 Banner`, type: 'banner', cost: 75, hex: bannerC4 });
 
-// Special Achievement Banners (cost: null hides them from shop, but puts them in Locker if owned)
+// Special Achievement Banners (cost: null hides them from shop)
 SHOP_CATALOG.push({ id: `banner_dynamic_lb`, name: `Live Rank Banner`, type: 'banner', cost: null, icon: '🏆' });
 SHOP_CATALOG.push({ id: `banner_gold_champ`, name: `1st Place Champion`, type: 'banner', cost: null, hex: `linear-gradient(45deg, #ffd700, #ffb800, #fff5a0, #ffb800, #ffd700)` });
 SHOP_CATALOG.push({ id: `banner_silver_champ`, name: `2nd Place Champion`, type: 'banner', cost: null, hex: `linear-gradient(45deg, #c0c0c0, #e0e0e0, #ffffff, #e0e0e0, #c0c0c0)` });
 SHOP_CATALOG.push({ id: `banner_bronze_champ`, name: `3rd Place Champion`, type: 'banner', cost: null, hex: `linear-gradient(45deg, #cd7f32, #b87333, #e6b380, #b87333, #cd7f32)` });
 SHOP_CATALOG.push({ id: `banner_top10_vet`, name: `Top 10 Veteran`, type: 'banner', cost: null, hex: `linear-gradient(90deg, #2d3436, #636e72, #2d3436)` });
 
+// NEW: Player Profile Icons (cost: null for achievements)
+SHOP_CATALOG.push({ id: `icon_early_access`, name: `Early Access`, type: 'icon', cost: null, icon: '🌟' });
+SHOP_CATALOG.push({ id: `icon_win_SuperTic-Tac-Toe`, name: `STTT Master`, type: 'icon', cost: null, icon: '❌' });
+SHOP_CATALOG.push({ id: `icon_win_EndlessTic-Tac-Toe`, name: `Endless Master`, type: 'icon', cost: null, icon: '♾️' });
+SHOP_CATALOG.push({ id: `icon_win_Connect4`, name: `C4 Master`, type: 'icon', cost: null, icon: '🔴' });
+SHOP_CATALOG.push({ id: `icon_win_DotsandBoxes`, name: `D&B Master`, type: 'icon', cost: null, icon: '🟦' });
+SHOP_CATALOG.push({ id: `icon_win_Battleship`, name: `Admiral`, type: 'icon', cost: null, icon: '🚢' });
+SHOP_CATALOG.push({ id: `icon_win_MiniChess`, name: `Chess Master`, type: 'icon', cost: null, icon: '♚' });
+SHOP_CATALOG.push({ id: `icon_win_CrazyEights`, name: `Crazy 8s Pro`, type: 'icon', cost: null, icon: '🃏' });
+SHOP_CATALOG.push({ id: `icon_win_Rummy`, name: `Rummy Pro`, type: 'icon', cost: null, icon: '🎴' });
+SHOP_CATALOG.push({ id: `icon_top10_vet`, name: `Top 10 Player`, type: 'icon', cost: null, icon: '🎖️' });
+SHOP_CATALOG.push({ id: `icon_bronze_champ`, name: `Bronze Champ`, type: 'icon', cost: null, icon: '🥉' });
+SHOP_CATALOG.push({ id: `icon_silver_champ`, name: `Silver Champ`, type: 'icon', cost: null, icon: '🥈' });
+SHOP_CATALOG.push({ id: `icon_gold_champ`, name: `Gold Champ`, type: 'icon', cost: null, icon: '🥇' });
+
+// Paid Chat Emojis
 const emojis = [
     { id: 'emoji_joy', icon: '😂', name: 'Tears of Joy' }, { id: 'emoji_rage', icon: '😡', name: 'Rage' },
     { id: 'emoji_cool', icon: '😎', name: 'Cool' }, { id: 'emoji_cry', icon: '😭', name: 'Crying' },
@@ -56,14 +73,14 @@ animations.forEach(a => SHOP_CATALOG.push({ id: a.id, name: a.name, type: 'winAn
 
 let currentShopTab = 'border';
 let currentLockerTab = 'border';
-const typeIcons = { border: '🖼️', banner: '🏷️', piece: '♟️', cardBack: '🃏', emoji: '😀', winAnim: '✨' };
+const typeIcons = { border: '🖼️', banner: '🏷️', piece: '♟️', cardBack: '🃏', emoji: '😀', winAnim: '✨', icon: '🌟' };
 
 async function handleBuyItem(itemId, cost) {
     if (window.sfx) window.sfx.click(); 
     if (!myUserObj) return;
     const res = await fetch('/shop/buy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: myUserObj.username, itemId, cost }) });
     const data = await res.json();
-    if (res.ok) { if (window.sfx) window.sfx.chime(); myUserObj = data.user; updateDashboardUI(); renderShop(); renderLocker(); } else { alert(data.error); }
+    if (res.ok) { if (window.sfx) window.sfx.chime(); myUserObj = data.user; window.myUserObj.lbPosition = data.lbPosition; updateDashboardUI(); renderShop(); renderLocker(); } else { alert(data.error); }
 }
 
 async function handleEquipItem(type, slot, itemId) {
@@ -71,14 +88,14 @@ async function handleEquipItem(type, slot, itemId) {
     if (!myUserObj) return;
     const res = await fetch('/shop/equip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: myUserObj.username, type, slot, itemId }) });
     const data = await res.json();
-    if (res.ok) { myUserObj = data.user; renderLocker(); updateDashboardUI(); } else { alert(data.error); }
+    if (res.ok) { myUserObj = data.user; window.myUserObj.lbPosition = data.lbPosition; renderLocker(); updateDashboardUI(); } else { alert(data.error); }
 }
 
 window.changeShopTab = function(type) { if (window.sfx) window.sfx.click(); currentShopTab = type; renderShop(); };
 window.changeLockerTab = function(type) { if (window.sfx) window.sfx.click(); currentLockerTab = type; renderLocker(); };
 
 function buildSidebar(currentTab, clickFunc) {
-    const tabs = [ { id: 'border', name: 'Borders' }, { id: 'banner', name: 'Banners' }, { id: 'piece', name: 'Pieces' }, { id: 'cardBack', name: 'Card Backs' }, { id: 'emoji', name: 'Emojis' }, { id: 'winAnim', name: 'Win Animations' } ];
+    const tabs = [ { id: 'border', name: 'Borders' }, { id: 'banner', name: 'Banners' }, { id: 'icon', name: 'Icons' }, { id: 'piece', name: 'Pieces' }, { id: 'cardBack', name: 'Card Backs' }, { id: 'emoji', name: 'Emojis' }, { id: 'winAnim', name: 'Win Animations' } ];
     let html = `<div class="shop-sidebar"><h2 style="font-size: 2rem; margin: 0 0 10px 5px; color: var(--text);">Categories</h2>`;
     tabs.forEach(t => { html += `<button class="shop-tab-btn ${currentTab === t.id ? 'active' : ''}" onclick="${clickFunc}('${t.id}')">${t.name}</button>`; });
     html += `</div>`; return html;
@@ -89,7 +106,7 @@ function renderShop() {
     if (!container || !myUserObj) return;
     let html = `<div style="display:flex; height: 75vh;">` + buildSidebar(currentShopTab, 'changeShopTab') + `<div class="shop-main-area"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;"><h2 style="margin:0; font-size: 2.5rem;">Shop 🛒</h2><p style="font-weight:900; color: #2ed573; font-size: 1.3rem; margin:0; background: rgba(46, 213, 115, 0.1); padding: 5px 15px; border-radius: 10px;">${myUserObj.bucks} 💵</p></div>`;
     
-    // Only show items that have a cost (hides the special achievement items)
+    // Hide achievements (cost === null)
     const items = SHOP_CATALOG.filter(i => i.type === currentShopTab && !defaultItemIds.includes(i.id) && i.cost !== null);
     
     if (items.length === 0) { html += `<p style="color: #a4b0be; font-style: italic;">Nothing available in this category.</p>`; } else {
@@ -112,7 +129,7 @@ function renderLocker() {
         const isPiece = currentLockerTab === 'piece'; const currentlyEquipped = myUserObj.equipped?.[currentLockerTab] || 'none';
         const primaryEq = isPiece ? (myUserObj.equipped?.piece?.primary || 'piece_red') : currentlyEquipped; const secondaryEq = isPiece ? (myUserObj.equipped?.piece?.secondary || 'piece_blue') : 'none';
         
-        if (currentLockerTab !== 'piece' && currentLockerTab !== 'cardBack') { html += `<div style="display: flex; justify-content: space-between; align-items: center; background: #f1f2f6; padding: 15px 20px; border-radius: 15px; margin-bottom: 12px;"><span style="font-weight: 900; font-size: 1.1rem;">Default (None)</span>${primaryEq === 'none' ? `<span style="font-weight:900; color:var(--secondary);">Equipped</span>` : `<button style="margin:0; padding: 5px 15px; font-size: 1rem; background: var(--secondary);" onclick="handleEquipItem('${currentLockerTab}', 'primary', 'none')">Equip</button>`}</div>`; }
+        if (currentLockerTab !== 'piece' && currentLockerTab !== 'cardBack' && currentLockerTab !== 'icon') { html += `<div style="display: flex; justify-content: space-between; align-items: center; background: #f1f2f6; padding: 15px 20px; border-radius: 15px; margin-bottom: 12px;"><span style="font-weight: 900; font-size: 1.1rem;">Default (None)</span>${primaryEq === 'none' ? `<span style="font-weight:900; color:var(--secondary);">Equipped</span>` : `<button style="margin:0; padding: 5px 15px; font-size: 1rem; background: var(--secondary);" onclick="handleEquipItem('${currentLockerTab}', 'primary', 'none')">Equip</button>`}</div>`; }
         
         const ownedItems = SHOP_CATALOG.filter(i => i.type === currentLockerTab && myUserObj.inventory && myUserObj.inventory.includes(i.id));
         
