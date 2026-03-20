@@ -7,20 +7,48 @@ const miniChessLogic = require('./games/miniChess'); const rankLogic = require('
 const app = express(); const server = http.createServer(app); const io = new Server(server);
 app.use(express.json()); app.use(express.static(path.join(__dirname, 'public')));
 
-mongoose.connect(process.env.MONGO_URI).then(() => console.log('✅ Connected to MongoDB permanently!')).catch(err => console.error('❌ MongoDB Connection Error:', err));
+mongoose.connect(process.env.MONGO_URI).then(() => {
+    console.log('✅ Connected to MongoDB permanently!');
+    updateLeaderboardAndAwards(); 
+}).catch(err => console.error('❌ MongoDB Connection Error:', err));
 
-const defaultInventory = ['piece_red', 'piece_blue', 'cardBack_red'];
+const defaultInventory = ['piece_red', 'piece_blue', 'cardBack_red', 'banner_dynamic_lb'];
 const defaultEquipped = { border: 'none', banner: 'none', piece: { primary: 'piece_red', secondary: 'piece_blue' }, cardBack: 'cardBack_red', emoji: 'none', winAnim: 'none' };
 
-// User Model
-const userSchema = new mongoose.Schema({ username: { type: String, required: true, unique: true }, password: { type: String, required: true }, rank: { type: Number, default: 100 }, bucks: { type: Number, default: 0 }, profilePic: { type: String, default: '' }, description: { type: String, default: 'I love Boarders!' }, isAnonymous: { type: Boolean, default: false }, inventory: { type: [String], default: defaultInventory }, equipped: { type: Object, default: defaultEquipped } });
+const userSchema = new mongoose.Schema({ username: { type: String, required: true, unique: true }, password: { type: String, required: true }, rank: { type: Number, default: 100 }, bucks: { type: Number, default: 0 }, profilePic: { type: String, default: '' }, description: { type: String, default: 'I love Boarders!' }, isAnonymous: { type: Boolean, default: false }, inventory: { type: [String], default: defaultInventory }, equipped: { type: Object, default: defaultEquipped }, createdAt: { type: Date, default: Date.now } });
 const User = mongoose.model('User', userSchema);
 
-// NEW: Feedback Model
 const feedbackSchema = new mongoose.Schema({ username: String, type: String, message: String, createdAt: { type: Date, default: Date.now } });
 const Feedback = mongoose.model('Feedback', feedbackSchema);
 
 let matchmakingQueue = []; const activeGames = {}; let onlinePlayersCount = 0; const privateRooms = {}; 
+
+// NEW: Dynamic Leaderboard Position Calculator
+async function getLbPos(username) {
+    if (username === 'Admin') return null;
+    const top = await User.find({ username: { $ne: 'Admin' } }).sort({ rank: -1 }).limit(10);
+    const idx = top.findIndex(u => u.username === username);
+    return idx !== -1 ? idx + 1 : null;
+}
+
+// NEW: Award Permanent Banners to the Top 3 & Top 10
+async function updateLeaderboardAndAwards() {
+    try {
+        const topUsers = await User.find({ username: { $ne: 'Admin' } }).sort({ rank: -1 }).limit(10);
+        for (let i = 0; i < topUsers.length; i++) {
+            let user = topUsers[i];
+            let changed = false;
+            const awardItem = (itemId) => { if (!user.inventory.includes(itemId)) { user.inventory.push(itemId); changed = true; } };
+
+            awardItem('banner_top10_vet'); // Everyone in Top 10 gets the Veteran banner
+            if (i === 0) awardItem('banner_gold_champ');
+            if (i === 1) awardItem('banner_silver_champ');
+            if (i === 2) awardItem('banner_bronze_champ');
+
+            if (changed) await user.save();
+        }
+    } catch (e) { console.error("Leaderboard award error:", e); }
+}
 
 const turnTimers = {};
 function startTurnTimer(roomName) {
@@ -41,7 +69,9 @@ app.post('/register', async (req, res) => {
         if (await User.findOne({ username })) return res.status(400).json({ error: 'Username taken' }); 
         const hashedPassword = await bcrypt.hash(password, 10); const defaultPfp = `https://api.dicebear.com/7.x/bottts/svg?seed=${username}`; 
         const newUser = new User({ username, password: hashedPassword, rank: 100, bucks: 0, profilePic: defaultPfp, inventory: defaultInventory, equipped: defaultEquipped }); 
-        await newUser.save(); res.json({ message: 'Success!', user: newUser }); 
+        await newUser.save(); await updateLeaderboardAndAwards();
+        const lbPosition = await getLbPos(newUser.username);
+        res.json({ message: 'Success!', user: newUser, lbPosition }); 
     } catch (err) { res.status(500).json({ error: 'Server Error' }); } 
 });
 
@@ -49,12 +79,11 @@ app.post('/login', async (req, res) => {
     try { 
         const { username, password } = req.body; const user = await User.findOne({ username }); 
         if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Invalid credentials' }); 
+        if (!user.inventory.includes('banner_dynamic_lb')) { user.inventory.push('banner_dynamic_lb'); await user.save(); }
         if (user.equipped && typeof user.equipped.piece === 'string') { user.equipped = { border: user.equipped.border || 'none', banner: user.equipped.banner || 'none', piece: { primary: user.equipped.piece || 'piece_red', secondary: 'piece_blue' }, cardBack: user.equipped.cardBack || 'cardBack_red', emoji: user.equipped.emoji || 'none', winAnim: user.equipped.winAnim || 'none' }; user.inventory = [...new Set([...user.inventory, ...defaultInventory])]; await user.save(); }
-        
-        // ADMIN PRIVILEGE (Infinite Bucks)
         if (user.username === 'Admin') { user.bucks = 999999; await user.save(); }
-        
-        res.json({ message: 'Success!', user }); 
+        const lbPosition = await getLbPos(user.username);
+        res.json({ message: 'Success!', user, lbPosition }); 
     } catch (err) { res.status(500).json({ error: 'Server Error' }); } 
 });
 
@@ -64,51 +93,112 @@ app.post('/update-profile', async (req, res) => {
         if (!user) return res.status(404).json({ error: 'User not found' }); 
         if (newUsername && newUsername !== currentUsername) { const exists = await User.findOne({ username: newUsername }); if (exists) return res.status(400).json({ error: 'New username already taken' }); user.username = newUsername; } 
         if (newPassword) user.password = await bcrypt.hash(newPassword, 10); if (profilePic !== undefined) user.profilePic = profilePic; if (description !== undefined) user.description = description; if (isAnonymous !== undefined) user.isAnonymous = isAnonymous; 
-        await user.save(); res.json({ message: 'Profile updated!', user }); 
+        await user.save(); 
+        const lbPosition = await getLbPos(user.username);
+        res.json({ message: 'Profile updated!', user, lbPosition }); 
     } catch (err) { res.status(500).json({ error: 'Server Error' }); } 
 });
 
-app.get('/leaderboard', async (req, res) => { try { res.json(await User.find({}, 'username rank bucks profilePic').sort({ rank: -1 }).limit(10)); } catch (err) { res.status(500).json({ error: 'Server Error' }); } });
+app.delete('/delete-account', async (req, res) => {
+    try { const { username, password } = req.body; if(username === 'Admin') return res.status(403).json({ error: 'Cannot delete Admin account.'}); const user = await User.findOne({ username }); if (!user || !(await bcrypt.compare(password, user.password))) return res.status(400).json({ error: 'Invalid password.' }); await User.deleteOne({ username }); await updateLeaderboardAndAwards(); res.json({ message: 'Account successfully deleted.' }); } catch (e) { res.status(500).json({ error: 'Server Error' }); }
+});
+
+app.get('/leaderboard', async (req, res) => { 
+    try { res.json(await User.find({ username: { $ne: 'Admin' } }, 'username rank bucks profilePic equipped').sort({ rank: -1 }).limit(10)); } 
+    catch (err) { res.status(500).json({ error: 'Server Error' }); } 
+});
+
 app.post('/shop/buy', async (req, res) => { try { const { username, itemId, cost } = req.body; const user = await User.findOne({ username }); if (!user) return res.status(404).json({ error: 'User not found' }); if (user.inventory.includes(itemId)) return res.status(400).json({ error: 'Already owned' }); if (user.bucks < cost) return res.status(400).json({ error: 'Not enough Bucks' }); user.bucks -= cost; user.inventory.push(itemId); await user.save(); res.json({ message: 'Purchase successful!', user }); } catch (err) { res.status(500).json({ error: 'Server Error' }); } });
 app.post('/shop/equip', async (req, res) => { try { const { username, type, slot, itemId } = req.body; const user = await User.findOne({ username }); if (!user) return res.status(404).json({ error: 'User not found' }); if (itemId !== 'none' && !user.inventory.includes(itemId)) return res.status(400).json({ error: 'You do not own this item.' }); if (type === 'piece') { if (!user.equipped.piece) user.equipped.piece = { primary: 'piece_red', secondary: 'piece_blue' }; user.equipped.piece[slot] = itemId; } else { user.equipped[type] = itemId; } user.markModified('equipped'); await user.save(); res.json({ message: 'Equipped!', user }); } catch (err) { res.status(500).json({ error: 'Server Error' }); } });
 
-// NEW: DATABASE FEEDBACK ROUTES
-app.post('/send-feedback', async (req, res) => {
-    try {
-        const { username, type, message } = req.body;
-        if (!message || message.trim() === '') return res.status(400).json({ error: "Message cannot be empty." });
-        const newFeedback = new Feedback({ username, type, message });
-        await newFeedback.save();
-        res.json({ message: 'Feedback successfully submitted!' });
-    } catch (error) { res.status(500).json({ error: 'Failed to save feedback.' }); }
-});
+app.post('/send-feedback', async (req, res) => { try { const { username, type, message } = req.body; if (!message || message.trim() === '') return res.status(400).json({ error: "Message cannot be empty." }); const newFeedback = new Feedback({ username, type, message }); await newFeedback.save(); res.json({ message: 'Feedback successfully submitted!' }); } catch (error) { res.status(500).json({ error: 'Failed to save feedback.' }); } });
+app.get('/admin/feedback', async (req, res) => { try { if (req.query.username !== 'Admin') return res.status(403).json({ error: 'Unauthorized' }); res.json(await Feedback.find().sort({ createdAt: -1 })); } catch (error) { res.status(500).json({ error: 'Failed to fetch feedback.' }); } });
+app.delete('/admin/feedback/:id', async (req, res) => { try { if (req.body.username !== 'Admin') return res.status(403).json({ error: 'Unauthorized' }); await Feedback.findByIdAndDelete(req.params.id); res.json({ success: true }); } catch (error) { res.status(500).json({ error: 'Failed to delete.' }); } });
+app.get('/admin/users', async (req, res) => { try { if (req.query.username !== 'Admin') return res.status(403).json({ error: 'Unauthorized' }); res.json(await User.find({ username: { $ne: 'Admin' } }, 'username rank bucks createdAt').sort({ createdAt: -1 })); } catch (error) { res.status(500).json({ error: 'Failed to fetch players.' }); } });
+app.delete('/admin/user/:username', async (req, res) => { try { if (req.body.adminName !== 'Admin') return res.status(403).json({ error: 'Unauthorized' }); await User.deleteOne({ username: req.params.username }); res.json({ success: true }); } catch (error) { res.status(500).json({ error: 'Failed to delete user.' }); } });
 
-app.get('/admin/feedback', async (req, res) => {
-    try {
-        if (req.query.username !== 'Admin') return res.status(403).json({ error: 'Unauthorized' });
-        const feedback = await Feedback.find().sort({ createdAt: -1 });
-        res.json(feedback);
-    } catch (error) { res.status(500).json({ error: 'Failed to fetch feedback.' }); }
-});
+async function handleGameEnd(roomName, winnerId, loserId, isQuit = false, isAfk = false) { 
+    const game = activeGames[roomName]; if (!game) return; if (turnTimers[roomName]) { clearTimeout(turnTimers[roomName]); delete turnTimers[roomName]; } 
+    let newWinnerRank = 100, newLoserRank = 100, newWinnerBucks = 0; let pointsWon = 0, pointsLost = 0; 
+    let winnerData = { username: game.playerUsernames ? game.playerUsernames[winnerId] : 'Winner', pfp: `https://api.dicebear.com/7.x/bottts/svg?seed=${winnerId}`, isAnon: false, equipped: defaultEquipped }; let loserData = { username: game.playerUsernames ? game.playerUsernames[loserId] : 'Loser', pfp: `https://api.dicebear.com/7.x/bottts/svg?seed=${loserId}`, isAnon: false, equipped: defaultEquipped }; 
+    
+    if (winnerId && loserId) { 
+        if (isQuit) { pointsWon = 25; pointsLost = 60; } else { const rankResults = rankLogic.calculatePoints(game, winnerId, loserId); pointsWon = rankResults.pointsWon; pointsLost = rankResults.pointsLost; } 
+        try { 
+            const winnerUser = await User.findOne({ username: game.playerUsernames[winnerId] }); const loserUser = await User.findOne({ username: game.playerUsernames[loserId] }); 
+            if (winnerUser) { winnerUser.rank = (Number(winnerUser.rank) ?? 100) + pointsWon; winnerUser.bucks = (Number(winnerUser.bucks) ?? 0) + 5 + (game.pool || 0); await winnerUser.save(); newWinnerRank = winnerUser.rank; newWinnerBucks = winnerUser.bucks; winnerData = { username: winnerUser.username, pfp: winnerUser.profilePic, isAnon: winnerUser.isAnonymous, equipped: winnerUser.equipped || defaultEquipped }; } 
+            if (loserUser) { loserUser.rank = Math.max(0, (Number(loserUser.rank) ?? 100) - pointsLost); await loserUser.save(); newLoserRank = loserUser.rank; loserData = { username: loserUser.username, pfp: loserUser.profilePic, isAnon: loserUser.isAnonymous, equipped: loserUser.equipped || defaultEquipped }; } 
+            await updateLeaderboardAndAwards(); // Refresh DB awards dynamically after points are assigned!
+        } catch (err) { console.error("DB Error", err); } 
+    } 
+    
+    // Inject the real-time leaderboard position into the game over payload
+    winnerData.lbPosition = await getLbPos(winnerData.username);
+    loserData.lbPosition = await getLbPos(loserData.username);
 
-app.delete('/admin/feedback/:id', async (req, res) => {
-    try {
-        if (req.body.username !== 'Admin') return res.status(403).json({ error: 'Unauthorized' });
-        await Feedback.findByIdAndDelete(req.params.id);
-        res.json({ success: true });
-    } catch (error) { res.status(500).json({ error: 'Failed to delete.' }); }
-});
+    const isPrivate = game.privateCode != null; 
+    if (!isPrivate) { if (winnerData?.isAnon) winnerData = { username: 'Anonymous', pfp: 'https://api.dicebear.com/7.x/identicon/svg?seed=Anon', equipped: defaultEquipped }; if (loserData?.isAnon) loserData = { username: 'Anonymous', pfp: 'https://api.dicebear.com/7.x/identicon/svg?seed=Anon', equipped: defaultEquipped }; } 
+    const poolWinnings = game.pool && !isQuit && winnerId ? game.pool : 0; 
+    io.to(roomName).emit('gameOverScreen', { winnerId, loserId, isQuit, isAfk, isTie: !winnerId && !loserId, newWinnerRank, newLoserRank, newWinnerBucks, winnerData, loserData, pointsWon, pointsLost, rummyScores: game.rummyScores, poolWinnings }); 
+    delete activeGames[roomName]; 
+}
 
-async function handleGameEnd(roomName, winnerId, loserId, isQuit = false, isAfk = false) { const game = activeGames[roomName]; if (!game) return; if (turnTimers[roomName]) { clearTimeout(turnTimers[roomName]); delete turnTimers[roomName]; } let newWinnerRank = 100, newLoserRank = 100, newWinnerBucks = 0; let pointsWon = 0, pointsLost = 0; let winnerData = { username: game.playerUsernames ? game.playerUsernames[winnerId] : 'Winner', pfp: `https://api.dicebear.com/7.x/bottts/svg?seed=${winnerId}`, isAnon: false, equipped: defaultEquipped }; let loserData = { username: game.playerUsernames ? game.playerUsernames[loserId] : 'Loser', pfp: `https://api.dicebear.com/7.x/bottts/svg?seed=${loserId}`, isAnon: false, equipped: defaultEquipped }; if (winnerId && loserId) { if (isQuit) { pointsWon = 25; pointsLost = 60; } else { const rankResults = rankLogic.calculatePoints(game, winnerId, loserId); pointsWon = rankResults.pointsWon; pointsLost = rankResults.pointsLost; } try { const winnerUser = await User.findOne({ username: game.playerUsernames[winnerId] }); const loserUser = await User.findOne({ username: game.playerUsernames[loserId] }); if (winnerUser) { winnerUser.rank = (Number(winnerUser.rank) ?? 100) + pointsWon; winnerUser.bucks = (Number(winnerUser.bucks) ?? 0) + 5 + (game.pool || 0); await winnerUser.save(); newWinnerRank = winnerUser.rank; newWinnerBucks = winnerUser.bucks; winnerData = { username: winnerUser.username, pfp: winnerUser.profilePic, isAnon: winnerUser.isAnonymous, equipped: winnerUser.equipped || defaultEquipped }; } if (loserUser) { loserUser.rank = Math.max(0, (Number(loserUser.rank) ?? 100) - pointsLost); await loserUser.save(); newLoserRank = loserUser.rank; loserData = { username: loserUser.username, pfp: loserUser.profilePic, isAnon: loserUser.isAnonymous, equipped: loserUser.equipped || defaultEquipped }; } } catch (err) { console.error("DB Error", err); } } const isPrivate = game.privateCode != null; if (!isPrivate) { if (winnerData?.isAnon) winnerData = { username: 'Anonymous', pfp: 'https://api.dicebear.com/7.x/identicon/svg?seed=Anon', equipped: defaultEquipped }; if (loserData?.isAnon) loserData = { username: 'Anonymous', pfp: 'https://api.dicebear.com/7.x/identicon/svg?seed=Anon', equipped: defaultEquipped }; } const poolWinnings = game.pool && !isQuit && winnerId ? game.pool : 0; io.to(roomName).emit('gameOverScreen', { winnerId, loserId, isQuit, isAfk, isTie: !winnerId && !loserId, newWinnerRank, newLoserRank, newWinnerBucks, winnerData, loserData, pointsWon, pointsLost, rummyScores: game.rummyScores, poolWinnings }); delete activeGames[roomName]; }
-async function initializeGame(roomName, chosenGame, player1, player2, privateCode = null) { activeGames[roomName] = { roomName, gameType: chosenGame, playerUsernames: { [player1.id]: player1.username, [player2.id]: player2.username }, winner: null, pool: 0, pendingAllocation: 0 }; io.to(roomName).emit('matchFound', { message: 'Match starting!', game: chosenGame }); let u1 = null, u2 = null; try { u1 = await User.findOne({ username: player1.username }); u2 = await User.findOne({ username: player2.username }); } catch (e) { } const getPlayerData = (user, fallbackName) => { if (!privateCode && user?.isAnonymous) return { username: 'Anonymous', rank: '???', bucks: 0, pfp: 'https://api.dicebear.com/7.x/identicon/svg?seed=Anon', equipped: defaultEquipped }; return { username: user?.username || fallbackName, rank: user?.rank ?? 100, bucks: user?.bucks ?? 0, pfp: user?.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${fallbackName}`, equipped: { ...defaultEquipped, ...user?.equipped } }; }; const p1Data = getPlayerData(u1, player1.username); const p2Data = getPlayerData(u2, player2.username); setTimeout(() => { const game = activeGames[roomName]; if (!game) return; let safeGameState = { roomName, gameType: chosenGame, isPrivate: !!privateCode, privateCode, playerData: { [player1.id]: p1Data, [player2.id]: p2Data } }; if (chosenGame === 'Super Tic-Tac-Toe') { game.players = { [player1.id]: 'X', [player2.id]: 'O' }; game.board = Array(9).fill(null).map(() => Array(9).fill(null)); game.macroBoard = Array(9).fill(null); game.turn = 'X'; game.nextBoard = -1; safeGameState.players = game.players; safeGameState.board = game.board; safeGameState.macroBoard = game.macroBoard; safeGameState.turn = game.turn; safeGameState.nextBoard = game.nextBoard; } else if (chosenGame === 'Connect 4') { game.players = { [player1.id]: 'Red', [player2.id]: 'Yellow' }; game.board = Array(6).fill(null).map(() => Array(7).fill(null)); game.turn = 'Red'; safeGameState.players = game.players; safeGameState.board = game.board; safeGameState.turn = game.turn; } else if (chosenGame === 'Dots and Boxes') { game.players = { [player1.id]: 'Red', [player2.id]: 'Blue' }; game.hLines = Array(4).fill(null).map(() => Array(3).fill(null)); game.vLines = Array(3).fill(null).map(() => Array(4).fill(null)); game.boxes = Array(3).fill(null).map(() => Array(3).fill(null)); game.scores = { 'Red': 0, 'Blue': 0 }; game.turn = 'Red'; safeGameState.players = game.players; safeGameState.hLines = game.hLines; safeGameState.vLines = game.vLines; safeGameState.boxes = game.boxes; safeGameState.scores = game.scores; safeGameState.turn = game.turn; } else if (chosenGame === 'Battleship') { game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; game.phase = 'setup'; game.ready = { [player1.id]: false, [player2.id]: false }; game.secretBoards = { [player1.id]: null, [player2.id]: null }; game.trackingBoards = { [player1.id]: Array(10).fill(null).map(()=>Array(10).fill(0)), [player2.id]: Array(10).fill(null).map(()=>Array(10).fill(0)) }; game.health = { [player1.id]: 17, [player2.id]: 17 }; game.turn = 'Player 1'; safeGameState.players = game.players; safeGameState.phase = game.phase; } else if (chosenGame === 'Crazy Eights') { game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; game.turn = 'Player 1'; game.activeSuit = null; const suits = ['♥', '♦', '♣', '♠']; const values = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']; game.deck = []; suits.forEach(s => values.forEach(v => game.deck.push({suit: s, val: v}))); game.deck.sort(() => Math.random() - 0.5); game.hands = { [player1.id]: game.deck.splice(0, 4), [player2.id]: game.deck.splice(0, 4) }; game.discardPile = [game.deck.pop()]; while(game.discardPile[0].val === '8') { game.deck.unshift(game.discardPile.pop()); game.discardPile = [game.deck.pop()]; } safeGameState.players = game.players; safeGameState.turn = game.turn; } else if (chosenGame === 'Rummy') { game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; game.turn = 'Player 1'; game.phase = 'draw'; game.melds = []; const suits = ['♥', '♦', '♣', '♠']; const values = ['A','2','3','4','5','6','7','8','9','10','J','Q','K']; game.deck = []; suits.forEach(s => values.forEach(v => game.deck.push({suit: s, val: v}))); game.deck.sort(() => Math.random() - 0.5); game.hands = { [player1.id]: game.deck.splice(0, 3), [player2.id]: game.deck.splice(0, 3) }; game.discardPile = [game.deck.pop()]; safeGameState.players = game.players; safeGameState.turn = game.turn; } else if (chosenGame === 'Endless Tic-Tac-Toe') { game.players = { [player1.id]: 'X', [player2.id]: 'O' }; game.board = Array(3).fill(null).map(() => Array(3).fill(null)); game.history = { 'X': [], 'O': [] }; game.turn = 'X'; safeGameState.players = game.players; safeGameState.board = game.board; safeGameState.history = game.history; safeGameState.turn = game.turn; } else if (chosenGame === 'Mini Chess') { game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; game.turn = 'Player 1'; game.board = Array(4).fill(null).map(() => Array(8).fill(0)); game.board[0][0] = 14; game.board[1][0] = 12; game.board[2][0] = 11; game.board[3][0] = 13; for(let r=0; r<4; r++) game.board[r][1] = 15; game.board[0][7] = 24; game.board[1][7] = 22; game.board[2][7] = 21; game.board[3][7] = 23; for(let r=0; r<4; r++) game.board[r][6] = 25; safeGameState.players = game.players; safeGameState.board = game.board; safeGameState.turn = game.turn; } io.to(roomName).emit('startGame', safeGameState); if (chosenGame === 'Crazy Eights') broadcastCrazyEightsState(roomName); if (chosenGame === 'Rummy') broadcastRummyState(roomName); startTurnTimer(roomName); }, 5000); }
+async function initializeGame(roomName, chosenGame, player1, player2, privateCode = null) { 
+    activeGames[roomName] = { roomName, gameType: chosenGame, playerUsernames: { [player1.id]: player1.username, [player2.id]: player2.username }, winner: null, pool: 0, pendingAllocation: 0 }; 
+    io.to(roomName).emit('matchFound', { message: 'Match starting!', game: chosenGame }); 
+    let u1 = null, u2 = null; try { u1 = await User.findOne({ username: player1.username }); u2 = await User.findOne({ username: player2.username }); } catch (e) { } 
+    
+    const getPlayerData = async (user, fallbackName) => { 
+        if (!privateCode && user?.isAnonymous) return { username: 'Anonymous', rank: '???', bucks: 0, pfp: 'https://api.dicebear.com/7.x/identicon/svg?seed=Anon', equipped: defaultEquipped, lbPosition: null }; 
+        const lbPos = await getLbPos(user?.username);
+        return { username: user?.username || fallbackName, rank: user?.rank ?? 100, bucks: user?.bucks ?? 0, pfp: user?.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${fallbackName}`, equipped: { ...defaultEquipped, ...user?.equipped }, lbPosition: lbPos }; 
+    }; 
+    
+    const p1Data = await getPlayerData(u1, player1.username); const p2Data = await getPlayerData(u2, player2.username); 
+    setTimeout(() => { 
+        const game = activeGames[roomName]; if (!game) return; 
+        let safeGameState = { roomName, gameType: chosenGame, isPrivate: !!privateCode, privateCode, playerData: { [player1.id]: p1Data, [player2.id]: p2Data } }; 
+        if (chosenGame === 'Super Tic-Tac-Toe') { game.players = { [player1.id]: 'X', [player2.id]: 'O' }; game.board = Array(9).fill(null).map(() => Array(9).fill(null)); game.macroBoard = Array(9).fill(null); game.turn = 'X'; game.nextBoard = -1; safeGameState.players = game.players; safeGameState.board = game.board; safeGameState.macroBoard = game.macroBoard; safeGameState.turn = game.turn; safeGameState.nextBoard = game.nextBoard; } 
+        else if (chosenGame === 'Connect 4') { game.players = { [player1.id]: 'Red', [player2.id]: 'Yellow' }; game.board = Array(6).fill(null).map(() => Array(7).fill(null)); game.turn = 'Red'; safeGameState.players = game.players; safeGameState.board = game.board; safeGameState.turn = game.turn; } 
+        else if (chosenGame === 'Dots and Boxes') { game.players = { [player1.id]: 'Red', [player2.id]: 'Blue' }; game.hLines = Array(4).fill(null).map(() => Array(3).fill(null)); game.vLines = Array(3).fill(null).map(() => Array(4).fill(null)); game.boxes = Array(3).fill(null).map(() => Array(3).fill(null)); game.scores = { 'Red': 0, 'Blue': 0 }; game.turn = 'Red'; safeGameState.players = game.players; safeGameState.hLines = game.hLines; safeGameState.vLines = game.vLines; safeGameState.boxes = game.boxes; safeGameState.scores = game.scores; safeGameState.turn = game.turn; } 
+        else if (chosenGame === 'Battleship') { game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; game.phase = 'setup'; game.ready = { [player1.id]: false, [player2.id]: false }; game.secretBoards = { [player1.id]: null, [player2.id]: null }; game.trackingBoards = { [player1.id]: Array(10).fill(null).map(()=>Array(10).fill(0)), [player2.id]: Array(10).fill(null).map(()=>Array(10).fill(0)) }; game.health = { [player1.id]: 17, [player2.id]: 17 }; game.turn = 'Player 1'; safeGameState.players = game.players; safeGameState.phase = game.phase; } 
+        else if (chosenGame === 'Crazy Eights') { game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; game.turn = 'Player 1'; game.activeSuit = null; const suits = ['♥', '♦', '♣', '♠']; const values = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']; game.deck = []; suits.forEach(s => values.forEach(v => game.deck.push({suit: s, val: v}))); game.deck.sort(() => Math.random() - 0.5); game.hands = { [player1.id]: game.deck.splice(0, 4), [player2.id]: game.deck.splice(0, 4) }; game.discardPile = [game.deck.pop()]; while(game.discardPile[0].val === '8') { game.deck.unshift(game.discardPile.pop()); game.discardPile = [game.deck.pop()]; } safeGameState.players = game.players; safeGameState.turn = game.turn; } 
+        else if (chosenGame === 'Rummy') { game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; game.turn = 'Player 1'; game.phase = 'draw'; game.melds = []; const suits = ['♥', '♦', '♣', '♠']; const values = ['A','2','3','4','5','6','7','8','9','10','J','Q','K']; game.deck = []; suits.forEach(s => values.forEach(v => game.deck.push({suit: s, val: v}))); game.deck.sort(() => Math.random() - 0.5); game.hands = { [player1.id]: game.deck.splice(0, 3), [player2.id]: game.deck.splice(0, 3) }; game.discardPile = [game.deck.pop()]; safeGameState.players = game.players; safeGameState.turn = game.turn; } 
+        else if (chosenGame === 'Endless Tic-Tac-Toe') { game.players = { [player1.id]: 'X', [player2.id]: 'O' }; game.board = Array(3).fill(null).map(() => Array(3).fill(null)); game.history = { 'X': [], 'O': [] }; game.turn = 'X'; safeGameState.players = game.players; safeGameState.board = game.board; safeGameState.history = game.history; safeGameState.turn = game.turn; } 
+        else if (chosenGame === 'Mini Chess') { game.players = { [player1.id]: 'Player 1', [player2.id]: 'Player 2' }; game.turn = 'Player 1'; game.board = Array(4).fill(null).map(() => Array(8).fill(0)); game.board[0][0] = 14; game.board[1][0] = 12; game.board[2][0] = 11; game.board[3][0] = 13; for(let r=0; r<4; r++) game.board[r][1] = 15; game.board[0][7] = 24; game.board[1][7] = 22; game.board[2][7] = 21; game.board[3][7] = 23; for(let r=0; r<4; r++) game.board[r][6] = 25; safeGameState.players = game.players; safeGameState.board = game.board; safeGameState.turn = game.turn; } 
+        io.to(roomName).emit('startGame', safeGameState); 
+        if (chosenGame === 'Crazy Eights') broadcastCrazyEightsState(roomName); if (chosenGame === 'Rummy') broadcastRummyState(roomName); startTurnTimer(roomName); 
+    }, 5000); 
+}
 function broadcastRummyState(roomName) { const game = activeGames[roomName]; if (!game) return; Object.keys(game.players).forEach(pId => { const opponentId = Object.keys(game.players).find(id => id !== pId); io.to(pId).emit('updateRummy', { turn: game.turn, phase: game.phase, myHand: game.hands[pId], opponentHandCount: game.hands[opponentId].length, discardPile: game.discardPile, deckCount: game.deck.length, melds: game.melds }); }); }
 function broadcastCrazyEightsState(roomName) { const game = activeGames[roomName]; if (!game) return; Object.keys(game.players).forEach(pId => { const opponentId = Object.keys(game.players).find(id => id !== pId); io.to(pId).emit('updateCrazyEights', { turn: game.turn, activeSuit: game.activeSuit, myHand: game.hands[pId], opponentHandCount: game.hands[opponentId].length, topCard: game.discardPile[game.discardPile.length - 1], deckCount: game.deck.length }); }); }
 
 io.on('connection', (socket) => {
     onlinePlayersCount++; io.emit('onlineCount', onlinePlayersCount);
-    socket.on('joinQueue', (username) => { socket.username = username; if (matchmakingQueue.some(p => p.username === username)) return socket.emit('queueError', 'You are already in the matchmaking queue!'); const inGame = Object.values(activeGames).some(g => g.playerUsernames && Object.values(g.playerUsernames).includes(username)); if (inGame) return socket.emit('queueError', 'You are already in an active game!'); matchmakingQueue = matchmakingQueue.filter(p => p.id !== socket.id); matchmakingQueue.push(socket); if (matchmakingQueue.length >= 2) { const player1 = matchmakingQueue.shift(); const player2 = matchmakingQueue.shift(); const minigames = ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Mini Chess', 'Crazy Eights', 'Rummy', 'Endless Tic-Tac-Toe']; const roomName = `room_${Date.now()}_${player1.id}_${player2.id}`; player1.join(roomName); player2.join(roomName); initializeGame(roomName, minigames[Math.floor(Math.random() * minigames.length)], player1, player2, null); } });
+    
+    // NEW: Testing and Admin accounts bypass the "already in queue" filter!
+    socket.on('joinQueue', (username) => { 
+        socket.username = username; 
+        if (username !== 'Testing' && username !== 'Admin') {
+            if (matchmakingQueue.some(p => p.username === username)) return socket.emit('queueError', 'You are already in the matchmaking queue!'); 
+            const inGame = Object.values(activeGames).some(g => g.playerUsernames && Object.values(g.playerUsernames).includes(username)); 
+            if (inGame) return socket.emit('queueError', 'You are already in an active game!'); 
+        }
+        matchmakingQueue = matchmakingQueue.filter(p => p.id !== socket.id); matchmakingQueue.push(socket); 
+        if (matchmakingQueue.length >= 2) { const player1 = matchmakingQueue.shift(); const player2 = matchmakingQueue.shift(); const minigames = ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Mini Chess', 'Crazy Eights', 'Rummy', 'Endless Tic-Tac-Toe']; const roomName = `room_${Date.now()}_${player1.id}_${player2.id}`; player1.join(roomName); player2.join(roomName); initializeGame(roomName, minigames[Math.floor(Math.random() * minigames.length)], player1, player2, null); } 
+    });
+    
     socket.on('createPrivateRoom', ({ username, code }) => { if (privateRooms[code]) return socket.emit('privateError', 'Code already exists!'); socket.username = username; privateRooms[code] = { host: socket.id, players: [socket], messages: [] }; socket.join(`private_${code}`); socket.emit('privateRoomJoined', { code, isHost: true, players: [username], messages: [] }); });
-    socket.on('joinPrivateRoom', ({ username, code }) => { const room = privateRooms[code]; if (!room) return socket.emit('privateError', 'Room not found!'); if (room.players.length >= 2) return socket.emit('privateError', 'Room is full!'); const inGame = Object.values(activeGames).some(g => g.playerUsernames && Object.values(g.playerUsernames).includes(username)); if (inGame || room.players.some(p => p.username === username)) return socket.emit('privateError', 'You are already in this room or an active game!'); socket.username = username; room.players.push(socket); socket.join(`private_${code}`); const playerNames = room.players.map(p => p.username); socket.emit('privateRoomJoined', { code, isHost: false, players: playerNames, messages: room.messages }); io.to(`private_${code}`).emit('updateLobbyPlayers', playerNames); });
+    
+    socket.on('joinPrivateRoom', ({ username, code }) => { 
+        const room = privateRooms[code]; if (!room) return socket.emit('privateError', 'Room not found!'); if (room.players.length >= 2) return socket.emit('privateError', 'Room is full!'); 
+        if (username !== 'Testing' && username !== 'Admin') {
+            const inGame = Object.values(activeGames).some(g => g.playerUsernames && Object.values(g.playerUsernames).includes(username)); 
+            if (inGame || room.players.some(p => p.username === username)) return socket.emit('privateError', 'You are already in this room or an active game!'); 
+        }
+        socket.username = username; room.players.push(socket); socket.join(`private_${code}`); const playerNames = room.players.map(p => p.username); socket.emit('privateRoomJoined', { code, isHost: false, players: playerNames, messages: room.messages }); io.to(`private_${code}`).emit('updateLobbyPlayers', playerNames); 
+    });
+    
     socket.on('sendPrivateChat', ({ code, message, username }) => { const room = privateRooms[code]; if (room) { const msgObj = { username, text: message }; room.messages.push(msgObj); io.to(`private_${code}`).emit('updatePrivateChat', msgObj); } });
     socket.on('startPrivateGame', ({ code, gameSelection }) => { const room = privateRooms[code]; if (room && room.host === socket.id && room.players.length === 2) { const player1 = room.players[0]; const player2 = room.players[1]; const roomName = `room_${Date.now()}_${player1.id}_${player2.id}`; player1.join(roomName); player2.join(roomName); let chosenGame = gameSelection === 'Random' ? ['Super Tic-Tac-Toe', 'Connect 4', 'Dots and Boxes', 'Battleship', 'Mini Chess', 'Crazy Eights', 'Rummy', 'Endless Tic-Tac-Toe'][Math.floor(Math.random() * 8)] : gameSelection; initializeGame(roomName, chosenGame, player1, player2, code); } });
     socket.on('sendInGameChat', ({ roomName, message, username }) => { io.to(roomName).emit('receiveInGameChat', { username, message }); });

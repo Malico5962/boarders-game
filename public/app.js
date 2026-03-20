@@ -40,7 +40,33 @@ const mcContainer = document.getElementById('mc-container'); const mcBoard = doc
 const c8Container = document.getElementById('c8-container'); const c8OppHand = document.getElementById('c8-opp-hand'); const c8MyHand = document.getElementById('c8-my-hand'); const c8Discard = document.getElementById('c8-discard'); const c8Deck = document.getElementById('c8-deck'); const c8ActiveSuit = document.getElementById('c8-active-suit');
 const rmContainer = document.getElementById('rm-container'); const rmOppHand = document.getElementById('rm-opp-hand'); const rmMyHand = document.getElementById('rm-my-hand'); const rmDiscardPile = document.getElementById('rm-discard-pile'); const rmDeck = document.getElementById('rm-deck'); const rmMeldArea = document.getElementById('rm-meld-area');
 
-window.COLOR_MAP = { red: '#ff003c', orange: '#ff8800', yellow: '#ffcc00', green: '#00e640', blue: '#0088ff', purple: '#b000ff', none: null };
+// NEW: Global Map containing all Permanent and Thematic background graphics!
+window.COLOR_MAP = { 
+    red: '#ff003c', orange: '#ff8800', yellow: '#ffcc00', green: '#00e640', blue: '#0088ff', purple: '#b000ff', 
+    cards: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' opacity='0.5'%3E%3Ctext x='10' y='40' font-size='30'%3E♠%3C/text%3E%3Ctext x='60' y='80' font-size='30' fill='red'%3E♥%3C/text%3E%3Ctext x='20' y='90' font-size='30' fill='red'%3E♦%3C/text%3E%3Ctext x='70' y='30' font-size='30'%3E♣%3C/text%3E%3C/svg%3E"), linear-gradient(135deg, rgba(255,71,87,0.8), rgba(255,255,255,0.9), rgba(47,53,66,0.8))`, 
+    chess: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' opacity='0.3'%3E%3Ctext x='10' y='40' font-size='40'%3E♞%3C/text%3E%3Ctext x='50' y='90' font-size='40'%3E♛%3C/text%3E%3C/svg%3E"), repeating-linear-gradient(45deg, #f1f2f6 0%, #f1f2f6 25px, #dfe6e9 25px, #dfe6e9 50px)`, 
+    c4: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 60' opacity='0.6'%3E%3Ccircle cx='15' cy='15' r='10' fill='%23ff4757'/%3E%3Ccircle cx='45' cy='45' r='10' fill='%23ffcc00'/%3E%3Ccircle cx='15' cy='45' r='10' fill='%23ff4757'/%3E%3Ccircle cx='45' cy='15' r='10' fill='%23ffcc00'/%3E%3C/svg%3E"), linear-gradient(to bottom right, #0984e3, #0652dd)`, 
+    gold_champ: `linear-gradient(45deg, #ffd700, #ffb800, #fff5a0, #ffb800, #ffd700)`,
+    silver_champ: `linear-gradient(45deg, #c0c0c0, #e0e0e0, #ffffff, #e0e0e0, #c0c0c0)`,
+    bronze_champ: `linear-gradient(45deg, #cd7f32, #b87333, #e6b380, #b87333, #cd7f32)`,
+    top10_vet: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50' y='55' font-size='40' text-anchor='middle' dominant-baseline='middle' fill='white' opacity='0.4'%3E⭐%3C/text%3E%3C/svg%3E"), linear-gradient(90deg, #2d3436, #636e72, #2d3436)`,
+    none: null 
+};
+
+// NEW: Dynamic Logic for resolving Banner Backgrounds
+window.getBannerStyle = function(bannerId, lbPos) {
+    if (!bannerId || bannerId === 'none') return 'rgba(255,255,255,0.5)';
+    if (bannerId === 'banner_dynamic_lb') {
+        if (!lbPos) return 'rgba(255,255,255,0.5)'; 
+        if (lbPos === 1) return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50' y='55' font-size='40' text-anchor='middle' dominant-baseline='middle' fill='rgba(255,255,255,0.9)' font-family='sans-serif' font-weight='900'%3E👑1%3C/text%3E%3C/svg%3E"), linear-gradient(45deg, #ffd700, #ffb800, #fff5a0, #ffb800, #ffd700)`;
+        if (lbPos === 2) return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50' y='55' font-size='40' text-anchor='middle' dominant-baseline='middle' fill='rgba(255,255,255,0.9)' font-family='sans-serif' font-weight='900'%3E👑2%3C/text%3E%3C/svg%3E"), linear-gradient(45deg, #c0c0c0, #e0e0e0, #ffffff, #e0e0e0, #c0c0c0)`;
+        if (lbPos === 3) return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50' y='55' font-size='40' text-anchor='middle' dominant-baseline='middle' fill='rgba(255,255,255,0.9)' font-family='sans-serif' font-weight='900'%3E👑3%3C/text%3E%3C/svg%3E"), linear-gradient(45deg, #cd7f32, #b87333, #e6b380, #b87333, #cd7f32)`;
+        return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50' y='55' font-size='40' text-anchor='middle' dominant-baseline='middle' fill='rgba(255,255,255,0.8)' font-family='sans-serif' font-weight='900'%3E%23${lbPos}%3C/text%3E%3C/svg%3E"), linear-gradient(45deg, #0984e3, #74b9ff, #00d2d3, #74b9ff, #0984e3)`;
+    }
+    const bColor = window.COLOR_MAP[bannerId.replace('banner_', '')];
+    return bColor ? (bColor.includes('gradient') || bColor.includes('url') ? bColor : `${bColor}80`) : 'rgba(255,255,255,0.5)';
+};
+
 window.p1Color = 'var(--primary)'; window.p2Color = 'var(--secondary)';
 window.p1CardBack = ''; window.p2CardBack = ''; window.myCardBack = ''; window.oppCardBack = '';
 window.currentRoom = null; window.mySymbol = null; window.currentGameType = null; window.myUsername = null; window.myUserObj = null; 
@@ -88,25 +114,35 @@ async function handleAuth(action) {
     const username = usernameInput.value, password = passwordInput.value; if (!username || !password) return authError.innerText = "Enter username and password.";
     const res = await fetch(`/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
     const data = await res.json();
-    if (res.ok) { window.myUserObj = data.user; localStorage.setItem('boarders_account', JSON.stringify({ username, password })); window.myUsername = window.myUserObj.username; authSection.style.display = 'none'; gameSection.style.display = 'block'; window.updateDashboardUI(); } else { localStorage.removeItem('boarders_account'); authError.innerText = data.error; }
+    if (res.ok) { 
+        window.myUserObj = data.user; 
+        window.myUserObj.lbPosition = data.lbPosition; // Cache rank
+        localStorage.setItem('boarders_account', JSON.stringify({ username, password })); window.myUsername = window.myUserObj.username; authSection.style.display = 'none'; gameSection.style.display = 'block'; window.updateDashboardUI(); 
+    } else { localStorage.removeItem('boarders_account'); authError.innerText = data.error; }
 }
 
 window.updateDashboardUI = function() {
     playerNameDisplay.innerText = window.myUserObj.username; playerRankDisplay.innerText = window.myUserObj.rank;
     document.getElementById('playerBucksDisplay').innerText = window.myUserObj.bucks || 0; 
+    
+    // Auto-Unequip logic if they fell off the leaderboard!
+    let bannerEq = window.myUserObj.equipped?.banner || 'none';
+    if (bannerEq === 'banner_dynamic_lb' && !window.myUserObj.lbPosition) {
+        bannerEq = 'none'; window.myUserObj.equipped.banner = 'none';
+        fetch('/shop/equip', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: window.myUsername, type: 'banner', slot: 'primary', itemId: 'none' }) });
+    }
+
     const dashPfp = document.getElementById('dashPfpDisplay');
     dashPfp.src = window.myUserObj.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${window.myUserObj.username}`;
+    
     const borderEq = window.myUserObj.equipped?.border?.replace('border_', '') || 'none';
-    const bannerEq = window.myUserObj.equipped?.banner?.replace('banner_', '') || 'none';
     dashPfp.style.borderColor = window.COLOR_MAP[borderEq] || 'white';
-    document.querySelector('.dash-profile-top').style.background = window.COLOR_MAP[bannerEq] ? `${window.COLOR_MAP[bannerEq]}80` : 'rgba(255,255,255,0.5)'; 
+    
+    document.querySelector('.dash-profile-top').style.background = window.getBannerStyle(bannerEq, window.myUserObj.lbPosition);
     document.getElementById('playerDescDisplay').innerText = `"${window.myUserObj.description}"`;
 
-    if (window.myUsername === 'Admin') {
-        document.getElementById('adminPanelBtn').style.display = 'block';
-    } else {
-        document.getElementById('adminPanelBtn').style.display = 'none';
-    }
+    if (window.myUsername === 'Admin') { document.getElementById('adminPanelBtn').style.display = 'block'; } 
+    else { document.getElementById('adminPanelBtn').style.display = 'none'; }
 }
 
 // UI Buttons
@@ -116,12 +152,24 @@ document.querySelectorAll('button').forEach(btn => {
 
 document.getElementById('registerBtn').addEventListener('click', () => handleAuth('register')); document.getElementById('loginBtn').addEventListener('click', () => handleAuth('login')); document.getElementById('logoutBtn').addEventListener('click', () => { localStorage.removeItem('boarders_account'); location.reload(); });
 
+// Delete Account Logic
+document.getElementById('deleteAccountBtn').addEventListener('click', async () => {
+    const confirmPass = prompt("Are you sure? This deletes all your stats and bucks permanently. Enter your password to confirm:");
+    if (!confirmPass) return;
+    try {
+        const res = await fetch('/delete-account', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: window.myUsername, password: confirmPass }) });
+        const data = await res.json();
+        if (res.ok) { alert(data.message); document.getElementById('logoutBtn').click(); }
+        else { alert(data.error); }
+    } catch (e) { alert("Failed to delete account."); }
+});
+
 document.getElementById('openAccountBtn').addEventListener('click', () => { document.getElementById('setUsername').value = window.myUserObj.username; document.getElementById('setPassword').value = ''; document.getElementById('setProfilePic').value = window.myUserObj.profilePic.includes('api.dicebear.com') ? '' : window.myUserObj.profilePic; document.getElementById('setDesc').value = window.myUserObj.description; document.getElementById('setAnon').checked = window.myUserObj.isAnonymous; document.getElementById('settingsPfpPreview').src = window.myUserObj.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${window.myUserObj.username}`; document.getElementById('account-modal').style.display = 'flex'; });
 document.getElementById('setProfilePic').addEventListener('input', (e) => { document.getElementById('settingsPfpPreview').src = e.target.value || `https://api.dicebear.com/7.x/bottts/svg?seed=${window.myUserObj.username}`; });
 document.getElementById('closeAccountBtn').addEventListener('click', () => document.getElementById('account-modal').style.display = 'none');
-document.getElementById('saveAccountBtn').addEventListener('click', async () => { const newUsername = document.getElementById('setUsername').value; const newPassword = document.getElementById('setPassword').value; let profilePic = document.getElementById('setProfilePic').value; if (!profilePic.trim()) profilePic = `https://api.dicebear.com/7.x/bottts/svg?seed=${newUsername || window.myUserObj.username}`; const res = await fetch('/update-profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentUsername: window.myUserObj.username, newUsername: newUsername || undefined, newPassword: newPassword || undefined, profilePic, description: document.getElementById('setDesc').value, isAnonymous: document.getElementById('setAnon').checked }) }); const data = await res.json(); if (res.ok) { window.myUserObj = data.user; window.myUsername = window.myUserObj.username; localStorage.setItem('boarders_account', JSON.stringify({ username: window.myUserObj.username, password: newPassword || JSON.parse(localStorage.getItem('boarders_account')).password })); window.updateDashboardUI(); document.getElementById('account-modal').style.display = 'none'; } else { document.getElementById('account-error').innerText = data.error; } });
+document.getElementById('saveAccountBtn').addEventListener('click', async () => { const newUsername = document.getElementById('setUsername').value; const newPassword = document.getElementById('setPassword').value; let profilePic = document.getElementById('setProfilePic').value; if (!profilePic.trim()) profilePic = `https://api.dicebear.com/7.x/bottts/svg?seed=${newUsername || window.myUserObj.username}`; const res = await fetch('/update-profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentUsername: window.myUserObj.username, newUsername: newUsername || undefined, newPassword: newPassword || undefined, profilePic, description: document.getElementById('setDesc').value, isAnonymous: document.getElementById('setAnon').checked }) }); const data = await res.json(); if (res.ok) { window.myUserObj = data.user; window.myUserObj.lbPosition = data.lbPosition; window.myUsername = window.myUserObj.username; localStorage.setItem('boarders_account', JSON.stringify({ username: window.myUserObj.username, password: newPassword || JSON.parse(localStorage.getItem('boarders_account')).password })); window.updateDashboardUI(); document.getElementById('account-modal').style.display = 'none'; } else { document.getElementById('account-error').innerText = data.error; } });
 
-// FEEDBACK LOGIC (DATABASE ROUTE)
+// FEEDBACK LOGIC
 let currentFeedbackType = '';
 document.getElementById('openFeedbackBtn').addEventListener('click', () => { document.getElementById('feedback-step-1').style.display = 'block'; document.getElementById('feedback-step-2').style.display = 'none'; document.getElementById('feedback-text').value = ''; document.getElementById('feedback-modal').style.display = 'flex'; });
 document.getElementById('closeFeedbackBtn').addEventListener('click', () => { document.getElementById('feedback-modal').style.display = 'none'; });
@@ -131,55 +179,47 @@ document.getElementById('btn-suggestion').addEventListener('click', () => { curr
 document.getElementById('submitFeedbackBtn').addEventListener('click', async () => {
     const msg = document.getElementById('feedback-text').value; if (!msg.trim()) return alert('Please enter a message.');
     const btn = document.getElementById('submitFeedbackBtn'); btn.innerText = 'Sending...'; btn.disabled = true;
-    try { 
-        const res = await fetch('/send-feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: window.myUsername, type: currentFeedbackType, message: msg }) }); 
-        const data = await res.json(); 
-        if (res.ok) { alert(data.message); document.getElementById('feedback-modal').style.display = 'none'; } else { alert(data.error); } 
-    } catch (err) { alert('Failed to send feedback.'); }
+    try { const res = await fetch('/send-feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: window.myUsername, type: currentFeedbackType, message: msg }) }); const data = await res.json(); if (res.ok) { alert(data.message); document.getElementById('feedback-modal').style.display = 'none'; } else { alert(data.error); } } catch (err) { alert('Failed to send feedback.'); }
     btn.innerText = 'Send Feedback'; btn.disabled = false;
 });
 
 // ADMIN PANEL LOGIC
 let adminCurrentTab = 'Bug Report';
 
-document.getElementById('adminPanelBtn').addEventListener('click', () => {
-    document.getElementById('admin-modal').style.display = 'flex';
-    loadAdminFeedback();
-});
-document.getElementById('closeAdminBtn').addEventListener('click', () => {
-    document.getElementById('admin-modal').style.display = 'none';
-});
+document.getElementById('adminPanelBtn').addEventListener('click', () => { document.getElementById('admin-modal').style.display = 'flex'; loadAdminFeedback(); });
+document.getElementById('closeAdminBtn').addEventListener('click', () => { document.getElementById('admin-modal').style.display = 'none'; });
 
-document.getElementById('tab-bugs').addEventListener('click', () => {
-    adminCurrentTab = 'Bug Report';
-    document.getElementById('tab-bugs').style.background = 'var(--primary)'; document.getElementById('tab-bugs').style.boxShadow = '0 4px 0 var(--primary-dark)'; document.getElementById('tab-bugs').style.color = 'white';
-    document.getElementById('tab-suggs').style.background = '#ced6e0'; document.getElementById('tab-suggs').style.boxShadow = '0 4px 0 #a4b0be'; document.getElementById('tab-suggs').style.color = 'var(--text)';
-    loadAdminFeedback();
-});
-document.getElementById('tab-suggs').addEventListener('click', () => {
-    adminCurrentTab = 'Suggestion';
-    document.getElementById('tab-suggs').style.background = 'var(--secondary)'; document.getElementById('tab-suggs').style.boxShadow = '0 4px 0 var(--secondary-dark)'; document.getElementById('tab-suggs').style.color = 'white';
-    document.getElementById('tab-bugs').style.background = '#ced6e0'; document.getElementById('tab-bugs').style.boxShadow = '0 4px 0 #a4b0be'; document.getElementById('tab-bugs').style.color = 'var(--text)';
-    loadAdminFeedback();
-});
+function resetAdminTabs() {
+    ['tab-bugs', 'tab-suggs', 'tab-users'].forEach(id => {
+        document.getElementById(id).style.background = '#ced6e0'; document.getElementById(id).style.boxShadow = '0 4px 0 #a4b0be'; document.getElementById(id).style.color = 'var(--text)';
+    });
+}
+
+document.getElementById('tab-bugs').addEventListener('click', () => { adminCurrentTab = 'Bug Report'; resetAdminTabs(); document.getElementById('tab-bugs').style.background = 'var(--primary)'; document.getElementById('tab-bugs').style.boxShadow = '0 4px 0 var(--primary-dark)'; document.getElementById('tab-bugs').style.color = 'white'; loadAdminFeedback(); });
+document.getElementById('tab-suggs').addEventListener('click', () => { adminCurrentTab = 'Suggestion'; resetAdminTabs(); document.getElementById('tab-suggs').style.background = 'var(--secondary)'; document.getElementById('tab-suggs').style.boxShadow = '0 4px 0 var(--secondary-dark)'; document.getElementById('tab-suggs').style.color = 'white'; loadAdminFeedback(); });
+document.getElementById('tab-users').addEventListener('click', () => { adminCurrentTab = 'Users'; resetAdminTabs(); document.getElementById('tab-users').style.background = 'var(--accent)'; document.getElementById('tab-users').style.boxShadow = '0 4px 0 #e19000'; document.getElementById('tab-users').style.color = 'white'; loadAdminFeedback(); });
 
 async function loadAdminFeedback() {
-    const list = document.getElementById('admin-feedback-list');
-    list.innerHTML = '<p>Loading...</p>';
+    const list = document.getElementById('admin-list-container'); list.innerHTML = '<p>Loading...</p>';
+    if (adminCurrentTab === 'Users') {
+        try {
+            const res = await fetch(`/admin/users?username=${window.myUsername}`); const data = await res.json();
+            if (!res.ok) return list.innerHTML = `<p>${data.error}</p>`; if (data.length === 0) return list.innerHTML = '<p style="color:#a4b0be; font-style:italic;">No other players found.</p>';
+            list.innerHTML = data.map(u => `
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#f1f2f6; padding:15px; border-radius:15px; margin-bottom:10px; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
+                    <div><strong style="color:var(--text); font-size:1.2rem;">${u.username}</strong><div style="font-size:0.9rem; color:#a4b0be;">${u.rank} ⭐ | ${u.bucks} 💵</div></div>
+                    <button onclick="deleteUser('${u.username}')" style="margin:0; padding:8px 15px; font-size:0.9rem; background:#ff4757; box-shadow:0 4px 0 #ff1e33;">Ban</button>
+                </div>
+            `).join('');
+        } catch (e) { list.innerHTML = '<p>Failed to load users.</p>'; } return;
+    }
     try {
-        const res = await fetch(`/admin/feedback?username=${window.myUsername}`);
-        const data = await res.json();
-        if(!res.ok) return list.innerHTML = `<p>${data.error}</p>`;
-        
-        const filtered = data.filter(f => f.type === adminCurrentTab);
-        if(filtered.length === 0) {
-            list.innerHTML = '<p style="color:#a4b0be; font-style:italic;">No feedback in this category.</p>'; return;
-        }
-        
+        const res = await fetch(`/admin/feedback?username=${window.myUsername}`); const data = await res.json();
+        if(!res.ok) return list.innerHTML = `<p>${data.error}</p>`; const filtered = data.filter(f => f.type === adminCurrentTab);
+        if(filtered.length === 0) { list.innerHTML = '<p style="color:#a4b0be; font-style:italic;">No feedback in this category.</p>'; return; }
         list.innerHTML = filtered.map(f => `
             <div style="background: #f1f2f6; padding: 15px; border-radius: 15px; margin-bottom: 10px; position:relative; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
-                <strong style="color:var(--text); font-size:1.2rem;">${f.username}</strong>
-                <span style="font-size:0.8rem; color:#a4b0be; margin-left:10px;">${new Date(f.createdAt).toLocaleString()}</span>
+                <strong style="color:var(--text); font-size:1.2rem;">${f.username}</strong><span style="font-size:0.8rem; color:#a4b0be; margin-left:10px;">${new Date(f.createdAt).toLocaleString()}</span>
                 <button onclick="deleteFeedback('${f._id}')" style="position:absolute; top:10px; right:10px; margin:0; padding:8px 15px; font-size:0.9rem; background:#ff4757; box-shadow:0 4px 0 #ff1e33;">Delete</button>
                 <p style="margin: 10px 0 0 0; white-space: pre-wrap; font-size: 1.1rem;">${f.message}</p>
             </div>
@@ -187,16 +227,33 @@ async function loadAdminFeedback() {
     } catch(e) { list.innerHTML = '<p>Failed to load.</p>'; }
 }
 
-window.deleteFeedback = async function(id) {
-    if(window.sfx) window.sfx.pop();
-    try {
-        await fetch(`/admin/feedback/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: window.myUsername }) });
-        loadAdminFeedback();
-    } catch(e) { alert('Delete failed'); }
-}
+window.deleteFeedback = async function(id) { if(window.sfx) window.sfx.pop(); try { await fetch(`/admin/feedback/${id}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: window.myUsername }) }); loadAdminFeedback(); } catch(e) { alert('Delete failed'); } }
+window.deleteUser = async function(targetUsername) { if (!confirm(`Are you sure you want to permanently delete and ban ${targetUsername}?`)) return; if(window.sfx) window.sfx.pop(); try { const res = await fetch(`/admin/user/${targetUsername}`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ adminName: window.myUsername }) }); if (res.ok) loadAdminFeedback(); else alert("Failed to delete user."); } catch(e) { alert('Delete failed'); } }
 
+// LEADERBOARD RENDERER - Uses the new getBannerStyle helper
+document.getElementById('viewLeaderboardBtn').addEventListener('click', async () => { 
+    document.getElementById('leaderboard-modal').style.display = 'flex'; 
+    const res = await fetch('/leaderboard'); const data = await res.json(); 
+    document.getElementById('leaderboard-content').innerHTML = data.map((u, i) => {
+        const lbPos = i + 1;
+        const borderEq = u.equipped?.border?.replace('border_', '') || 'none';
+        const bannerEq = u.equipped?.banner || 'none';
+        const borderColor = window.COLOR_MAP[borderEq] || 'var(--primary)';
+        
+        return `<div class="leaderboard-item" style="background: ${window.getBannerStyle(bannerEq, lbPos)}; background-size: cover; background-position: center; margin-bottom: 5px; border-radius: 15px;">
+            <div class="lb-left">
+                <span style="margin-right: 15px;" class="lb-stroke">#${lbPos}</span>
+                <img src="${u.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username}`}" style="border-color: ${borderColor};">
+                <span class="lb-stroke">${u.username}</span>
+            </div>
+            <div>
+                <span style="margin-right: 10px;" class="lb-stroke">${u.rank} ⭐</span>
+                <span style="color:#2ed573;" class="lb-stroke">${u.bucks || 0} 💵</span>
+            </div>
+        </div>`;
+    }).join(''); 
+}); 
 
-document.getElementById('viewLeaderboardBtn').addEventListener('click', async () => { document.getElementById('leaderboard-modal').style.display = 'flex'; const res = await fetch('/leaderboard'); const data = await res.json(); document.getElementById('leaderboard-content').innerHTML = data.map((u, i) => `<div class="leaderboard-item"><div class="lb-left"><span style="font-weight: 900; margin-right: 15px; color: var(--secondary);">#${i+1}</span><img src="${u.profilePic || `https://api.dicebear.com/7.x/bottts/svg?seed=${u.username}`}"><span>${u.username}</span></div><div><span style="color:var(--primary); margin-right: 10px;">${u.rank} ⭐</span><span style="color:#2ed573;">${u.bucks || 0} 💵</span></div></div>`).join(''); }); 
 document.getElementById('closeLeaderboardBtn').addEventListener('click', () => { document.getElementById('leaderboard-modal').style.display = 'none'; });
 document.getElementById('viewStatsBtn').addEventListener('click', () => { if (window.renderStatsUI) window.renderStatsUI(); document.getElementById('stats-modal').style.display = 'flex'; });
 document.getElementById('closeStatsBtn').addEventListener('click', () => { document.getElementById('stats-modal').style.display = 'none'; });
@@ -233,13 +290,18 @@ socket.on('updateLobbyPlayers', (players) => { document.getElementById('lobbyPla
 document.getElementById('sendChatBtn').addEventListener('click', () => { const text = document.getElementById('chatInput').value; if (text && myPrivateCode) { socket.emit('sendPrivateChat', { code: myPrivateCode, message: text, username: window.myUsername }); document.getElementById('chatInput').value = ''; } }); socket.on('updatePrivateChat', (msg) => { const chatBox = document.getElementById('chat-box'); chatBox.innerHTML += `<div class="chat-msg"><span>${msg.username}:</span> ${msg.text}</div>`; chatBox.scrollTop = chatBox.scrollHeight; });
 document.getElementById('startPrivateBtn').addEventListener('click', () => { socket.emit('startPrivateGame', { code: myPrivateCode, gameSelection: document.getElementById('gameSelector').value }); }); document.getElementById('leaveLobbyBtn').addEventListener('click', () => location.reload());
 
+// EMOJI DROP - Natively centered on the viewport!
 socket.on('receiveEmoji', ({ senderId, emoji }) => {
     if(window.sfx) window.sfx.chime();
     const isP1 = senderId === window.p1Id;
-    const targetPfp = document.getElementById(isP1 ? 'p1-info' : 'p2-info');
-    if(!targetPfp) return;
-    const em = document.createElement('div'); em.innerText = emoji; em.style.cssText = 'position:absolute; font-size:3.5rem; top:-20px; z-index:100; pointer-events:none; animation: floatEmoji 2s ease-out forwards; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.3));'; em.style[isP1 ? 'right' : 'left'] = '-20px'; 
-    targetPfp.style.position = 'relative'; targetPfp.appendChild(em); setTimeout(() => em.remove(), 2000);
+    const em = document.createElement('div'); em.innerText = emoji; 
+    
+    // Spawns absolutely positioned right beside the board based on who clicked!
+    em.style.cssText = 'position:fixed; font-size:6rem; top:35%; z-index:1000; pointer-events:none; animation: floatEmoji 2s ease-out forwards; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.4));'; 
+    em.style[isP1 ? 'left' : 'right'] = '20vw'; 
+    
+    document.body.appendChild(em); 
+    setTimeout(() => em.remove(), 2000);
 });
 
 // Setup Grid Boards
@@ -255,14 +317,10 @@ socket.on('startGame', (gameState) => {
     window.p1Id = Object.keys(gameState.players)[0]; window.p2Id = Object.keys(gameState.players)[1];
 
     const p1Data = gameState.playerData[window.p1Id]; const p2Data = gameState.playerData[window.p2Id];
-    
     const p1Eq = p1Data.equipped || {}; const p2Eq = p2Data.equipped || {};
+    
     let p1Piece = p1Eq.piece?.primary || 'piece_red'; let p2Piece = p2Eq.piece?.primary || 'piece_red';
-
-    if (p1Piece === p2Piece) {
-        if (Math.random() > 0.5) { p1Piece = p1Eq.piece?.secondary || 'piece_blue'; } else { p2Piece = p2Eq.piece?.secondary || 'piece_blue'; }
-        if (p1Piece === p2Piece) { p1Piece = 'piece_red'; p2Piece = 'piece_blue'; }
-    }
+    if (p1Piece === p2Piece) { if (Math.random() > 0.5) { p1Piece = p1Eq.piece?.secondary || 'piece_blue'; } else { p2Piece = p2Eq.piece?.secondary || 'piece_blue'; } if (p1Piece === p2Piece) { p1Piece = 'piece_red'; p2Piece = 'piece_blue'; } }
 
     window.p1Color = window.COLOR_MAP[p1Piece.replace('piece_', '')] || 'var(--primary)';
     window.p2Color = window.COLOR_MAP[p2Piece.replace('piece_', '')] || 'var(--secondary)';
@@ -271,17 +329,27 @@ socket.on('startGame', (gameState) => {
     const rawP1Cb = window.COLOR_MAP[p1CbId.replace('cardBack_', '')]; const rawP2Cb = window.COLOR_MAP[p2CbId.replace('cardBack_', '')];
     window.p1CardBack = rawP1Cb ? `repeating-linear-gradient(45deg, ${rawP1Cb}, ${rawP1Cb} 10px, #ffffff 10px, #ffffff 20px)` : '';
     window.p2CardBack = rawP2Cb ? `repeating-linear-gradient(45deg, ${rawP2Cb}, ${rawP2Cb} 10px, #ffffff 10px, #ffffff 20px)` : '';
-    
-    window.myCardBack = (window.mySymbol === gameState.players[window.p1Id]) ? window.p1CardBack : window.p2CardBack;
-    window.oppCardBack = (window.mySymbol === gameState.players[window.p1Id]) ? window.p2CardBack : window.p1CardBack;
+    window.myCardBack = (window.mySymbol === gameState.players[window.p1Id]) ? window.p1CardBack : window.p2CardBack; window.oppCardBack = (window.mySymbol === gameState.players[window.p1Id]) ? window.p2CardBack : window.p1CardBack;
 
     const p1Border = window.COLOR_MAP[p1Eq.border?.replace('border_', '')] || 'var(--primary)';
     const p2Border = window.COLOR_MAP[p2Eq.border?.replace('border_', '')] || 'var(--secondary)';
-    const p1Banner = window.COLOR_MAP[p1Eq.banner?.replace('banner_', '')] || '#f1f2f6';
-    const p2Banner = window.COLOR_MAP[p2Eq.banner?.replace('banner_', '')] || '#f1f2f6';
+    
+    const p1Banner = p1Eq.banner || 'none';
+    const p2Banner = p2Eq.banner || 'none';
 
     document.getElementById('p1-pfp').style.borderColor = p1Border; document.getElementById('p2-pfp').style.borderColor = p2Border;
-    document.getElementById('p1-info').style.background = p1Banner === '#f1f2f6' ? p1Banner : `${p1Banner}80`; document.getElementById('p2-info').style.background = p2Banner === '#f1f2f6' ? p2Banner : `${p2Banner}80`;
+    
+    // Safely apply in-game banners
+    document.getElementById('p1-info').style.background = window.getBannerStyle(p1Banner, p1Data.lbPosition); 
+    document.getElementById('p1-info').style.backgroundSize = "cover";
+    document.getElementById('p1-info').style.backgroundPosition = "center";
+    
+    document.getElementById('p2-info').style.background = window.getBannerStyle(p2Banner, p2Data.lbPosition);
+    document.getElementById('p2-info').style.backgroundSize = "cover";
+    document.getElementById('p2-info').style.backgroundPosition = "center";
+    
+    document.getElementById('p1-name').classList.add('lb-stroke'); document.getElementById('p1-rank').classList.add('lb-stroke');
+    document.getElementById('p2-name').classList.add('lb-stroke'); document.getElementById('p2-rank').classList.add('lb-stroke');
 
     document.getElementById('p1-name').innerText = p1Data.username; document.getElementById('p1-rank').innerText = `${p1Data.rank}⭐`; document.getElementById('p1-pfp').src = p1Data.pfp;
     document.getElementById('p2-name').innerText = p2Data.username; document.getElementById('p2-rank').innerText = `${p2Data.rank}⭐`; document.getElementById('p2-pfp').src = p2Data.pfp;
@@ -352,7 +420,7 @@ document.addEventListener('keydown', (e) => {
 
 function playWinAnimation(animType) {
     if (animType === 'winAnim_lightning') { const flash = document.createElement('div'); flash.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999;pointer-events:none;animation:lightningFlash 0.6s ease-out;'; document.body.appendChild(flash); document.body.style.animation = 'shakeScreen 0.5s'; setTimeout(() => { flash.remove(); document.body.style.animation = ''; }, 600); } 
-    else if (animType === 'winAnim_confetti') { const colors = Object.values(window.COLOR_MAP).filter(c => c !== null); for(let i=0; i<100; i++) { const conf = document.createElement('div'); conf.style.cssText = `position:fixed; top:-10px; left:${Math.random()*100}vw; width:10px; height:20px; background:${colors[Math.floor(Math.random()*colors.length)]}; z-index:9999; pointer-events:none; animation:confettiFall ${2+Math.random()*2}s linear forwards;`; document.body.appendChild(conf); setTimeout(() => conf.remove(), 4000); } } 
+    else if (animType === 'winAnim_confetti') { const colors = Object.values(window.COLOR_MAP).filter(c => c !== null && !c.includes('url')); for(let i=0; i<100; i++) { const conf = document.createElement('div'); conf.style.cssText = `position:fixed; top:-10px; left:${Math.random()*100}vw; width:10px; height:20px; background:${colors[Math.floor(Math.random()*colors.length)]}; z-index:9999; pointer-events:none; animation:confettiFall ${2+Math.random()*2}s linear forwards;`; document.body.appendChild(conf); setTimeout(() => conf.remove(), 4000); } } 
     else if (animType === 'winAnim_fireworks') { for(let i=0; i<6; i++) { setTimeout(() => { const fw = document.createElement('div'); fw.style.cssText = `position:fixed; top:${20+Math.random()*50}vh; left:${20+Math.random()*60}vw; width:5px; height:5px; background:white; border-radius:50%; box-shadow:0 0 50px 20px var(--primary); z-index:9999; pointer-events:none; animation:fireworksExplode 1s ease-out forwards;`; document.body.appendChild(fw); setTimeout(() => fw.remove(), 1000); }, i * 300); } }
 }
 
@@ -385,6 +453,10 @@ socket.on('gameOverScreen', (data) => {
         
         if (amIWinner) { playerRankDisplay.innerText = data.newWinnerRank; window.myUserObj.rank = data.newWinnerRank; } else { playerRankDisplay.innerText = data.newLoserRank; window.myUserObj.rank = data.newLoserRank; }
         
+        // Ensure winner/loser cache matches new DB ranking for final screen
+        if (amIWinner && data.winnerData.lbPosition !== undefined) window.myUserObj.lbPosition = data.winnerData.lbPosition;
+        if (amILoser && data.loserData.lbPosition !== undefined) window.myUserObj.lbPosition = data.loserData.lbPosition;
+        
         const wBorder = window.COLOR_MAP[data.winnerData.equipped?.border?.replace('border_', '')] || 'var(--secondary)';
         const lBorder = window.COLOR_MAP[data.loserData.equipped?.border?.replace('border_', '')] || 'var(--primary)';
         
@@ -403,10 +475,18 @@ window.resetBoardUI = function() {
     window.stopTurnTimer();
     stttBoard.innerHTML = ''; for (let i = 0; i < 9; i++) { const macroCell = document.createElement('div'); macroCell.className = 'macro-cell'; macroCell.id = `macro-${i}`; for (let j = 0; j < 9; j++) { const microCell = document.createElement('div'); microCell.className = 'micro-cell'; microCell.id = `micro-${i}-${j}`; microCell.onclick = () => { if (window.currentGameType === 'Super Tic-Tac-Toe') socket.emit('makeMove', { roomName: window.currentRoom, macroIndex: i, microIndex: j }); }; macroCell.appendChild(microCell); } stttBoard.appendChild(macroCell); }
     tttBoard.innerHTML = ''; for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const cell = document.createElement('div'); cell.className = 'ttt-cell'; cell.id = `ttt-${r}-${c}`; cell.onclick = () => { if (window.currentGameType === 'Endless Tic-Tac-Toe') socket.emit('makeTTTEndlessMove', { roomName: window.currentRoom, r, c }); }; tttBoard.appendChild(cell); } }
+    
+    // FIX: Clear Connect 4 properly to avoid row stacking!
+    c4Board.innerHTML = ''; 
     for (let r = 0; r < 6; r++) { for (let c = 0; c < 7; c++) { const cell = document.createElement('div'); cell.className = 'c4-cell'; cell.id = `c4-${r}-${c}`; cell.onclick = () => { if (window.currentGameType === 'Connect 4') socket.emit('makeC4Move', { roomName: window.currentRoom, col: c }); }; c4Board.appendChild(cell); } }
+    
     for (let r = 0; r < 4; r++) { for (let c = 0; c < 3; c++) { const h = document.getElementById(`h-${r}-${c}`); if(h) { h.className = 'dab-hline'; h.removeAttribute('style'); } } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 4; c++) { const v = document.getElementById(`v-${r}-${c}`); if(v) { v.className = 'dab-vline'; v.removeAttribute('style'); } } } for (let r = 0; r < 3; r++) { for (let c = 0; c < 3; c++) { const b = document.getElementById(`box-${r}-${c}`); if(b) { b.className = 'dab-box'; b.innerText = ''; b.removeAttribute('style'); } } } document.getElementById('dab-score-red').innerText = '0'; document.getElementById('dab-score-blue').innerText = '0';
     for (let r = 0; r < 10; r++) { for (let c = 0; c < 10; c++) { const m = document.getElementById(`bs-my-${r}-${c}`); if(m) { m.className = 'bs-cell'; m.innerText = ''; } const t = document.getElementById(`bs-target-${r}-${c}`); if(t) { t.className = 'bs-cell'; t.innerText = ''; } } }
+    
+    // FIX: Clear Mini Chess properly to avoid row stacking!
+    mcBoard.innerHTML = ''; 
     for (let r = 0; r < 4; r++) { for (let c = 0; c < 8; c++) { const cell = document.createElement('div'); cell.id = `mc-${r}-${c}`; cell.className = `mc-cell ${(r + c) % 2 === 0 ? 'mc-light' : 'mc-dark'}`; cell.onclick = () => { if (window.currentGameType !== 'Mini Chess' || !lastChessGame || lastChessGame.turn !== window.mySymbol) return; const piece = lastChessGame.board[r][c]; const isMyPiece = (window.mySymbol === 'Player 1' && piece >= 11 && piece <= 15) || (window.mySymbol === 'Player 2' && piece >= 21 && piece <= 25); if (mcSelected) { if (isMyPiece) { mcSelected = {r, c}; updateChessUI(lastChessGame); } else { if (isValidChessMoveClient(lastChessGame.board, window.mySymbol, mcSelected.r, mcSelected.c, r, c)) { socket.emit('makeChessMove', { roomName: window.currentRoom, fromR: mcSelected.r, fromC: mcSelected.c, toR: r, toC: c }); } mcSelected = null; updateChessUI(lastChessGame); } } else { if (isMyPiece) { mcSelected = {r, c}; updateChessUI(lastChessGame); } } }; mcBoard.appendChild(cell); } }
+    
     c8MyHand.innerHTML = ''; c8OppHand.innerHTML = ''; c8Discard.innerHTML = ''; c8ActiveSuit.innerText = ''; document.getElementById('c8-suit-modal').style.display = 'none'; lastTopCardStr = ""; 
     rmMyHand.innerHTML = ''; rmOppHand.innerHTML = ''; rmDiscardPile.innerHTML = ''; rmMeldArea.innerHTML = ''; rummySelectedIndices = []; rummySelectedMeldId = null;
     
